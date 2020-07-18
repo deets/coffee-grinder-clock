@@ -1,0 +1,6 @@
+[submodule "components/esp32deets"]
+	path = components/esp32deets
+	url = git@github.com:deets/esp32deets.git
+[submodule "components/u8g2"]
+	path = components/u8g2
+	url = https://github.com/olikraus/u8g2.git

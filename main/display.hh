@@ -25,7 +25,9 @@ public:
 
   void clear();
   void update();
+  void set_color(uint8_t color);
   void draw_pixel(int x, int y);
+  void circle(int x0, int y0, int rad, bool filled=false, uint8_t opt=U8G2_DRAW_ALL);
   void blit(const sprite_t&, int x, int y);
   void hline(int x, int x2, int y);
 

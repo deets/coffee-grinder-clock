@@ -34,6 +34,7 @@ Display::Display()
 void Display::clear()
 {
   u8g2_ClearBuffer(&_u8g2);
+  set_color(0);
 }
 
 void Display::update()
@@ -57,15 +58,30 @@ void Display::blit(const sprite_t& sprite, int x, int y)
     );
 }
 
+void Display::set_color(uint8_t color)
+{
+  u8g2_SetDrawColor(&_u8g2, color);
+}
+
 void Display::hline(int x, int x2, int y)
 {
-  u8g2_SetDrawColor(&_u8g2, 1);
   u8g2_DrawHLine(
     &_u8g2,
     x, y, abs(x2 - x) + 1
     );
 }
 
+void Display::circle(int x0, int y0, int rad, bool filled, uint8_t opt)
+{
+  if(filled)
+  {
+    u8g2_DrawDisc(&_u8g2, x0, y0, rad, opt);
+  }
+  else
+  {
+    u8g2_DrawCircle(&_u8g2, x0, y0, rad, opt);
+  }
+}
 
 void Display::font_render(const font_info_t& font, const char* text, int x, int y)
 {

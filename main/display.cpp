@@ -2,11 +2,12 @@
 #include "display.hh"
 
 // DISPLAY
-#define DISPLAY_DC   25
-#define DISPLAY_RST  18
-#define DISPLAY_CLK  19
-#define DISPLAY_CS   22
-#define DISPLAY_MOSI 23
+#define DISPLAY_CLK  23
+#define DISPLAY_MOSI 22
+#define DISPLAY_RST  19
+#define DISPLAY_DC   05
+#define DISPLAY_CS   16
+
 #define DISPLAY_SPEED (2 * 1000*1000)
 
 

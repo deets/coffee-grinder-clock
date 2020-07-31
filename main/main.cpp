@@ -1,5 +1,4 @@
 #include "display.hh"
-#include "buzzer.hh"
 #include "i2c.hh"
 #include "mpu6050.hh"
 
@@ -31,7 +30,6 @@ void app_main()
   nvs_flash_init();
 
   Display display;
-  Buzzer buzzer(static_cast<gpio_num_t>(14));
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
   MPU6050 mpu(
     MPU6050_ADDRESS_AD0_HI,

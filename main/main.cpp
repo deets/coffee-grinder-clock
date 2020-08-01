@@ -37,7 +37,7 @@ public:
 
   void update(float gyro, float elapsed_seconds)
   {
-    _gyro_z_accu -= gyro * elapsed_seconds;
+    _gyro_z_accu += gyro * elapsed_seconds;
   }
 
   void display(Display& display)
@@ -81,6 +81,7 @@ void app_main()
     MPU6050::ACC_2_FS
     );
 
+  mpu.calibrate(2000);
   auto now = esp_timer_get_time();
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
 

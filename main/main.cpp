@@ -37,7 +37,7 @@ public:
 
   void update(float gyro, float elapsed_seconds)
   {
-    _gyro_z_accu += gyro * elapsed_seconds;
+    _gyro_accu += gyro * elapsed_seconds;
   }
 
   void display(Display& display)
@@ -51,7 +51,7 @@ public:
         SMALL.size + _y - 1
       );
     }
-    const auto rad = _gyro_z_accu / 180.0 * M_PI;
+    const auto rad = _gyro_accu / 180.0 * M_PI;
     const auto r = static_cast<float>(_radius) + _offset;
     const auto cx = int(cos(rad) * r) + _x;
     const auto cy = int(sin(rad) * r) + _y;
@@ -63,7 +63,7 @@ private:
   const char* _name;
   int _x, _y, _radius;
   float _offset;
-  float _gyro_z_accu = 0.0;
+  float _gyro_accu = 0.0;
 };
 
 } // end ns anon
@@ -92,13 +92,13 @@ void app_main()
     const auto h = esp_timer_get_time();
     const auto elapsed = h - now;
     now = h;
-    const auto gyro_data = mpu.read_raw();
+    const auto gyro_data = mpu.read();
     const auto elapsed_seconds = static_cast<float>(elapsed) / 1000000.0;
+    const auto z_gyro = gyro_data.gyro[2];
+    z_axis.update(z_gyro, elapsed_seconds);
 
-    z_axis.update(gyro_data.gyro[2], elapsed_seconds);
     display.clear();
     display.set_color(1);
-
     z_axis.display(display);
     display.font_render(
       SMALL,

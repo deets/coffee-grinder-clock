@@ -1,6 +1,7 @@
 #include "display.hh"
 #include "i2c.hh"
 #include "mpu6050.hh"
+#include "ringbuffer.hh"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -71,6 +72,7 @@ private:
 void app_main()
 {
   nvs_flash_init();
+  auto rb = new RingBuffer<float, 2000>();
 
   Display display;
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
@@ -86,17 +88,25 @@ void app_main()
   const auto mpu_samplerate = mpu.samplerate();
   const auto elapsed_seconds = 1.0 / mpu_samplerate;
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
+
+  auto display_reader = rb->reader();
+
   for( ;; )
   {
 
     vTaskDelay(pdMS_TO_TICKS(MAINLOOP_WAIT));
     mpu.consume_fifo(
-      [&z_axis, elapsed_seconds](const MPU6050::gyro_data_t& entry)
+      [rb](const MPU6050::gyro_data_t& entry)
       {
-        z_axis.update(entry.gyro[2], elapsed_seconds);
+        rb->append(entry.gyro[2]);
       }
       );
-
+    display_reader.consume(
+      [&z_axis, elapsed_seconds](const float& v)
+      {
+        z_axis.update(v, elapsed_seconds);
+      }
+      );
     display.clear();
     display.set_color(1);
     z_axis.display(display);

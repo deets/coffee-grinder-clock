@@ -81,21 +81,21 @@ void app_main()
     MPU6050::ACC_2_FS
     );
 
-  mpu.calibrate(2000);
-  auto now = esp_timer_get_time();
+  mpu.setup_fifo(MPU6050::fifo_e(MPU6050::FIFO_EN_ZG | MPU6050::FIFO_EN_YG));
+  mpu.calibrate_fifo_based();
+  const auto mpu_samplerate = mpu.samplerate();
+  const auto elapsed_seconds = 1.0 / mpu_samplerate;
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
-
   for( ;; )
   {
 
     vTaskDelay(pdMS_TO_TICKS(MAINLOOP_WAIT));
-    const auto h = esp_timer_get_time();
-    const auto elapsed = h - now;
-    now = h;
-    const auto gyro_data = mpu.read();
-    const auto elapsed_seconds = static_cast<float>(elapsed) / 1000000.0;
-    const auto z_gyro = gyro_data.gyro[2];
-    z_axis.update(z_gyro, elapsed_seconds);
+    mpu.consume_fifo(
+      [&z_axis, elapsed_seconds](const MPU6050::gyro_data_t& entry)
+      {
+        z_axis.update(entry.gyro[2], elapsed_seconds);
+      }
+      );
 
     display.clear();
     display.set_color(1);

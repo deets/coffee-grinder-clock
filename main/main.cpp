@@ -82,11 +82,11 @@ void app_main()
   MPU6050 mpu(
     MPU6050_ADDRESS_AD0_HI,
     i2c,
-    MPU6050::GYRO_250_FS,
+    MPU6050::GYRO_2000_FS,
     MPU6050::ACC_2_FS
     );
 
-  mpu.setup_fifo(MPU6050::fifo_e(MPU6050::FIFO_EN_ZG | MPU6050::FIFO_EN_YG));
+  mpu.setup_fifo(MPU6050::fifo_e(MPU6050::FIFO_EN_ZG));
   mpu.calibrate_fifo_based();
   const auto mpu_samplerate = mpu.samplerate();
   const auto elapsed_seconds = 1.0 / mpu_samplerate;

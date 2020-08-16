@@ -1,6 +1,7 @@
 #include "display.hh"
 #include "i2c.hh"
 #include "mpu6050.hh"
+#include "drv2605.hh"
 #include "ringbuffer.hh"
 
 #include <esp_log.h>
@@ -76,6 +77,8 @@ void app_main()
 
   Display display;
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
+  DRV2605 hf(i2c);
+
   MPU6050 mpu(
     MPU6050_ADDRESS_AD0_HI,
     i2c,
@@ -91,6 +94,29 @@ void app_main()
 
   auto display_reader = rb->reader();
 
+  hf.use_erm();
+  hf.select_library(1);
+
+  esp_timer_create_args_t ta = {
+    .callback=[](void* arg)
+              {
+                static int counter=0;
+                ++counter;
+                if(counter % 5 < 4)
+                {
+                  auto& hf = *static_cast<DRV2605*>(arg);
+                  hf.set_waveform(0, 16);  // play effect
+                  hf.set_waveform(1, 0);       // end waveform
+                  hf.go();
+                }
+              },
+    .arg=&hf,
+    .dispatch_method=ESP_TIMER_TASK,
+    .name="lra"
+  };
+  esp_timer_handle_t th;
+  esp_timer_create(&ta, &th);
+  esp_timer_start_periodic(th, 1000000);
   for( ;; )
   {
 

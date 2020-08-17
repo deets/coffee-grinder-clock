@@ -53,14 +53,17 @@ public:
         SMALL.size + _y - 1
       );
     }
-    const auto rad = _gyro_accu / 180.0 * M_PI;
     const auto r = static_cast<float>(_radius) + _offset;
-    const auto cx = int(cos(rad) * r) + _x;
-    const auto cy = int(sin(rad) * r) + _y;
+    const auto cx = int(cos(rad()) * r) + _x;
+    const auto cy = int(sin(rad()) * r) + _y;
     display.circle(_x, _y, _radius);
     display.circle(cx, cy, 2, true);
   }
 
+  float rad() const
+  {
+    return _gyro_accu / 180.0 * M_PI;
+  }
 private:
   const char* _name;
   int _x, _y, _radius;

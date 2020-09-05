@@ -2,7 +2,10 @@
 #include "i2c.hh"
 #include "mpu6050.hh"
 #include "drv2605.hh"
+#include "fft.hh"
 #include "ringbuffer.hh"
+#include "wifi.hh"
+#include "streamer.hh"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -11,6 +14,7 @@
 #include <nvs_flash.h>
 #include <math.h>
 #include <array>
+#include <vector>
 
 extern "C" void app_main();
 
@@ -64,6 +68,7 @@ public:
   {
     return _gyro_accu / 180.0 * M_PI;
   }
+
 private:
   const char* _name;
   int _x, _y, _radius;
@@ -71,16 +76,18 @@ private:
   float _gyro_accu = 0.0;
 };
 
-} // end ns anon
-
-void app_main()
+void main_task(void*)
 {
-  nvs_flash_init();
+  setup_wifi();
+  using FFT = FFT<1024>;
   auto rb = new RingBuffer<float, 2000>();
+
+  auto fft = new FFT();
 
   Display display;
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
   DRV2605 hf(i2c);
+  auto streamer = new DataStreamer("");
 
   MPU6050 mpu(
     MPU6050_ADDRESS_AD0_HI,
@@ -120,9 +127,11 @@ void app_main()
   esp_timer_handle_t th;
   esp_timer_create(&ta, &th);
   esp_timer_start_periodic(th, 1000000);
-  for( ;; )
-  {
 
+  const auto start = esp_timer_get_time();
+  bool running = true;
+  while(running)
+  {
     vTaskDelay(pdMS_TO_TICKS(MAINLOOP_WAIT));
     mpu.consume_fifo(
       [rb](const MPU6050::gyro_data_t& entry)
@@ -131,22 +140,46 @@ void app_main()
       }
       );
     display_reader.consume(
-      [&z_axis, elapsed_seconds](const float& v)
+      [&](const float& v)
       {
         z_axis.update(v, elapsed_seconds);
+        const auto rad = z_axis.rad();
+        streamer->feed(rad);
+        if(fft->feed(cos(rad), 0.0))
+        {
+        }
       }
       );
     display.clear();
     display.set_color(1);
     z_axis.display(display);
+
+    const float elapsed = float(esp_timer_get_time() - start) / 1000000.0;
+    char time_buffer[50];
+    sprintf(time_buffer, "%f", elapsed);
     display.font_render(
       SMALL,
-      "hallo",
+      time_buffer,
       0,
       SMALL.size + 2
       );
-
-
     display.update();
+    //ESP_LOGI("main", "fifo overflown: %i", mpu.fifo_overflown());
   }
+}
+
+} // end ns anon
+
+void app_main()
+{
+  //Initialize NVS
+  esp_err_t ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+  // it seems if I don't bind this to core 0, the i2c
+  // subsystem fails randomly.
+  xTaskCreatePinnedToCore(main_task, "main", 8192, NULL, uxTaskPriorityGet(NULL), NULL, 0);
 }

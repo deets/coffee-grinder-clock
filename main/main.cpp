@@ -1,7 +1,6 @@
 #include "display.hh"
 #include "i2c.hh"
 #include "mpu6050.hh"
-#include "drv2605.hh"
 #include "fft.hh"
 #include "ringbuffer.hh"
 #include "wifi.hh"
@@ -86,7 +85,6 @@ void main_task(void*)
 
   Display display;
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
-  DRV2605 hf(i2c);
   auto streamer = new DataStreamer("");
 
   MPU6050 mpu(
@@ -103,30 +101,6 @@ void main_task(void*)
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
 
   auto display_reader = rb->reader();
-
-  hf.use_erm();
-  hf.select_library(1);
-
-  esp_timer_create_args_t ta = {
-    .callback=[](void* arg)
-              {
-                static int counter=0;
-                ++counter;
-                if(counter % 5 < 4)
-                {
-                  auto& hf = *static_cast<DRV2605*>(arg);
-                  hf.set_waveform(0, 16);  // play effect
-                  hf.set_waveform(1, 0);       // end waveform
-                  hf.go();
-                }
-              },
-    .arg=&hf,
-    .dispatch_method=ESP_TIMER_TASK,
-    .name="lra"
-  };
-  esp_timer_handle_t th;
-  esp_timer_create(&ta, &th);
-  esp_timer_start_periodic(th, 1000000);
 
   const auto start = esp_timer_get_time();
   bool running = true;

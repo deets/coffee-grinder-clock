@@ -6,8 +6,11 @@
 #include <esp_http_server.h>
 
 #include <string>
+#include <vector>
 
 #define STREAMER_TASK_STACK_SIZE 2000
+
+const size_t MAX_BUFFER_SIZE = 1000 * 5; // 5 seconds of data, 20Kb
 
 class DataStreamer
 {
@@ -25,6 +28,11 @@ public:
 private:
   static void s_run(void*);
   void run();
+  httpd_handle_t start_webserver(void);
+
+  static esp_err_t s_http_request_forwarder(httpd_req_t *req);
+
+  esp_err_t get_raw_handler(httpd_req_t *req);
 
   TaskHandle_t _task_handle;
   StaticTask_t _task_buffer;
@@ -32,4 +40,8 @@ private:
 
   streamer_state_e _state;
   httpd_handle_t _server;
+
+  // raw data buffer
+  std::vector<float> _raw_buffer;
+
 };

@@ -74,7 +74,6 @@ void DataStreamer::feed(float value)
 
 esp_err_t DataStreamer::get_raw_handler(httpd_req_t *req)
 {
-  ESP_LOGI(TAG, "http data: %i", _raw_buffer.size());
   httpd_resp_send(req, reinterpret_cast<const char*>(_raw_buffer.data()), _raw_buffer.size() * sizeof(decltype(_raw_buffer)::value_type));
   _raw_buffer.clear();
   return ESP_OK;
@@ -91,11 +90,16 @@ httpd_handle_t DataStreamer::start_webserver(void)
 
     /* Start the httpd server */
     if (httpd_start(&server, &config) == ESP_OK) {
+      _raw_get_callback = [this](httpd_req_t* req)
+                          {
+                            return get_raw_handler(req);
+                          };
+
       httpd_uri_t uri_get = {
         .uri      = "/",
         .method   = HTTP_GET,
         .handler  = s_http_request_forwarder,
-        .user_ctx = this
+        .user_ctx = &_raw_get_callback
       };
       httpd_register_uri_handler(server, &uri_get);
     }
@@ -105,5 +109,5 @@ httpd_handle_t DataStreamer::start_webserver(void)
 
 esp_err_t DataStreamer::s_http_request_forwarder(httpd_req_t *req)
 {
-  return static_cast<DataStreamer*>(req->user_ctx)->get_raw_handler(req);
+  return (*static_cast<http_callback_t*>(req->user_ctx))(req);
 }

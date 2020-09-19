@@ -7,10 +7,13 @@
 
 #include <string>
 #include <vector>
+#include <functional>
 
 #define STREAMER_TASK_STACK_SIZE 2000
 
 const size_t MAX_BUFFER_SIZE = 1000 * 5; // 5 seconds of data, 20Kb
+
+using http_callback_t = std::function<esp_err_t(httpd_req_t*)>;
 
 class DataStreamer
 {
@@ -44,4 +47,5 @@ private:
   // raw data buffer
   std::vector<float> _raw_buffer;
 
+  http_callback_t _raw_get_callback;
 };

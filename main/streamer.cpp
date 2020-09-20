@@ -44,7 +44,6 @@ void DataStreamer::run()
   while(true)
   {
     vTaskDelay(pdMS_TO_TICKS(1000));
-    ESP_LOGI(TAG, "running, wifi state: %i", wifi_connected());
     switch(_state)
     {
     case IDLE:
@@ -79,6 +78,15 @@ esp_err_t DataStreamer::get_raw_handler(httpd_req_t *req)
   return ESP_OK;
 }
 
+esp_err_t DataStreamer::get_fft_handler(httpd_req_t *req)
+{
+  swap(_fft_in_flight, _fft_streaming);
+  httpd_resp_send(req, reinterpret_cast<const char*>(_fft_streaming.data()), _fft_streaming.size() * sizeof(decltype(_fft_streaming)::value_type));
+  ESP_LOGI(TAG, "fft size: %i", _fft_streaming.size());
+  _fft_streaming.clear();
+  return ESP_OK;
+}
+
 /* Function for starting the webserver */
 httpd_handle_t DataStreamer::start_webserver(void)
 {
@@ -94,14 +102,26 @@ httpd_handle_t DataStreamer::start_webserver(void)
                           {
                             return get_raw_handler(req);
                           };
-
-      httpd_uri_t uri_get = {
+      httpd_uri_t raw_get = {
         .uri      = "/",
         .method   = HTTP_GET,
         .handler  = s_http_request_forwarder,
         .user_ctx = &_raw_get_callback
       };
-      httpd_register_uri_handler(server, &uri_get);
+      httpd_register_uri_handler(server, &raw_get);
+
+      _fft_get_callback = [this](httpd_req_t* req)
+                          {
+                            return get_fft_handler(req);
+                          };
+      httpd_uri_t fft_get = {
+        .uri      = "/fft",
+        .method   = HTTP_GET,
+        .handler  = s_http_request_forwarder,
+        .user_ctx = &_fft_get_callback
+      };
+      httpd_register_uri_handler(server, &fft_get);
+
     }
     /* If server failed to start, handle will be NULL */
     return server;

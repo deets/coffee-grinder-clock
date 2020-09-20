@@ -119,8 +119,10 @@ void main_task(void*)
         z_axis.update(v, elapsed_seconds);
         const auto rad = z_axis.rad();
         streamer->feed(rad);
-        if(fft->feed(cos(rad), 0.0))
+        if(fft->feed(rad, 0.0))
         {
+          fft->compute();
+          streamer->deliver_fft(fft);
         }
       }
       );

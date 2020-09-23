@@ -78,7 +78,7 @@ private:
 void main_task(void*)
 {
   setup_wifi();
-  using FFT = FFT<1024>;
+  using FFT = FFT<1024, 16>;
   auto rb = new RingBuffer<float, 2000>();
 
   auto fft = new FFT();

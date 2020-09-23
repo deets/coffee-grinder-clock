@@ -1,10 +1,10 @@
-import sys
 import threading
 import queue
 import http.client
 import time
 import struct
 import argparse
+from math import isnan
 
 import numpy as np
 
@@ -19,20 +19,26 @@ from bokeh.models import Select
 
 FREQUENCY = 1000.0 # our sampling frequency in the MPU
 N = 1024
+HIGHPASS = 10
 
 
 class Visualisation:
 
     def __init__(self):
         opts = self._parse_args()
+        self._conn = http.client.HTTPConnection("coffee-grinder-clock.local")
 
         self._output = lambda x: None
         if opts.output:
             self._output = self._create_recorder(opts.output)
 
-        self._read = self._read_from_http
+        self._raw_read = self._raw_read_from_http
         if opts.replay:
-            self._read = self._create_file_replay(opts.replay)
+            self._raw_read = self._create_file_replay(opts.replay)
+
+        self._fft_read = self._read_fft_from_http
+        if opts.replay_fft:
+            self._fft_read = self._create_file_replay(opts.replay_fft)
 
         self._data_q = queue.Queue()
         doc = self._doc = curdoc()
@@ -44,6 +50,11 @@ class Visualisation:
         )
 
         fft_data = dict(
+            frequency=np.linspace(0, FREQUENCY / 2, N // 2),
+            fft=[0] * (N // 2),
+        )
+
+        esp_fft_data = dict(
             frequency=np.linspace(0, FREQUENCY / 2, N // 2),
             fft=[0] * (N // 2),
         )
@@ -76,10 +87,25 @@ class Visualisation:
             source=self._fft_source,
         )
 
+        self._esp_fft_source = ColumnDataSource(
+                data=esp_fft_data,
+        )
+        esp_fft_figure = figure(
+            width=600,
+            height=100,
+        )
+        esp_fft_figure.line(
+            x="frequency",
+            y="fft",
+            alpha=0.5,
+            source=self._esp_fft_source,
+        )
+
         layout = column(
             children=[
                 raw_figure,
                 fft_figure,
+                esp_fft_figure,
             ],
             sizing_mode="scale_width"
         )
@@ -100,7 +126,11 @@ class Visualisation:
         parser.add_argument(
             "-r",
             "--replay",
-            help="Replay data from recorded file",
+            help="Replay raw data from recorded file",
+        )
+        parser.add_argument(
+            "--replay-fft",
+            help="Replay FFT data from recorded file",
         )
         return parser.parse_args()
 
@@ -112,18 +142,34 @@ class Visualisation:
     def _background_task(self):
         timestamp = time.monotonic()
         while True:
-            data = self._read()
+            data = self._raw_read()
+            next_tick = False
             if data:
-                self._data_q.put(data)
-                self._doc.add_next_tick_callback(self._process_data)
+                self._data_q.put(("raw", data))
                 self._output(data)
+                next_tick = True
+
+            data = self._fft_read()
+            if data:
+                self._data_q.put(("fft", data))
+
+            if next_tick:
+                self._doc.add_next_tick_callback(self._process_data)
+
             timestamp += 1/60.0
             time.sleep(max(timestamp - time.monotonic(), 0))
 
-    def _read_from_http(self):
-        conn = http.client.HTTPConnection("coffee-grinder-clock.local")
-        conn.request("GET", "/")
-        response = conn.getresponse()
+    def _raw_read_from_http(self):
+        self._conn.request("GET", "/")
+        response = self._conn.getresponse()
+        data = response.read()
+        response.close()
+        data = struct.unpack("f" * (len(data) // 4), data)
+        return data
+
+    def _read_fft_from_http(self):
+        self._conn.request("GET", "/fft")
+        response = self._conn.getresponse()
         data = response.read()
         response.close()
         data = struct.unpack("f" * (len(data) // 4), data)
@@ -155,25 +201,46 @@ class Visualisation:
         # one callback per line, we gather them
         # and process as many of them as we find.
         for _ in range(self._data_q.qsize()):
-            data = self._data_q.get()[-N:]
-            readings = self._raw_source.data['readings']
-            readings = readings[len(data):]
-            readings.extend(data)
+            kind, data = self._data_q.get()[-N:]
+            if kind == "raw":
+                self._process_raw_data(data)
+            elif kind == "fft":
+                self._process_fft_data(data)
 
-            yf = fft(readings)
-            spectrum = yf / N
-            autopower = np.abs(spectrum * np.conj(spectrum))
-            autopower = autopower[:len(autopower) // 2]
-            autopower[:2] = [0.0, 0.0]
+    def _process_raw_data(self, data):
+        readings = self._raw_source.data['readings']
+        readings = readings[len(data):]
+        readings.extend(data)
 
-            patch = dict(
-                readings=[(slice(0, len(readings)), readings)],
-            )
-            self._raw_source.patch(patch)
-            patch = dict(
-                fft=[(slice(0, N // 2), autopower)],
-            )
-            self._fft_source.patch(patch)
+        yf = fft(readings)
+
+        autopower = self._process_fft_output(yf)
+        patch = dict(
+            readings=[(slice(0, len(readings)), readings)],
+        )
+        self._raw_source.patch(patch)
+        patch = dict(
+            fft=[(slice(0, N // 2), autopower)],
+        )
+        self._fft_source.patch(patch)
+
+    def _process_fft_output(self, fft):
+        spectrum = fft / N
+        autopower = np.abs(spectrum * np.conj(spectrum))
+        autopower = autopower[:len(autopower) // 2]
+        autopower[:HIGHPASS] = [0.0] * HIGHPASS
+        #autopower = np.log10(autopower)
+        return autopower
+
+    def _process_fft_data(self, data):
+        data = [v if not isnan(v) else -1 for v in data]
+        data = np.array(data)
+        complex_ = data[::2] + 1j * data[1::2]
+        autopower = self._process_fft_output(complex_)
+        patch = dict(
+            fft=[(slice(0, N // 2), autopower)],
+        )
+        self._esp_fft_source.patch(patch)
 
 
 def main():

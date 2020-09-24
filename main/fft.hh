@@ -5,6 +5,8 @@
 
 #include <math.h>
 #include <array>
+#include <algorithm>
+
 
 template<int N, int OVERLAP>
 class FFT
@@ -68,6 +70,20 @@ public:
       _fft[i * 2] = _complex_input[i * 2] * _window[i];
       _fft[i * 2 + 1] = _complex_input[i * 2 + 1] * _window[i];
     }
+  }
+
+  void postprocess()
+  {
+    // This processes the data so we get a usable
+    // real-valued spectrum
+
+    // generate spectrum
+    std::transform(
+      _fft.begin(),
+      _fft.end(),
+      _fft.begin(),
+      [](const float v) { return v / N; }
+      );
   }
 
   size_t size() const

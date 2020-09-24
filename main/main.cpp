@@ -122,6 +122,7 @@ void main_task(void*)
         if(fft->feed(rad, rad))
         {
           fft->compute();
+          fft->postprocess();
           streamer->deliver_fft(fft);
         }
       }

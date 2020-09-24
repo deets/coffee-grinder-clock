@@ -7,6 +7,23 @@
 #include <array>
 #include <algorithm>
 
+namespace detail {
+
+inline void complex_conjugate(float re, float im, float& cre, float& cim)
+{
+  cre = re;
+  cim = -im;
+}
+
+inline void complex_multiply(float are, float aim, float bre, float bim, float& cre, float& cim)
+{
+  auto re  = are * bre - aim * bim;
+  auto im = are * bim + aim * bre;
+  cre = re;
+  cim = im;
+}
+
+}
 
 template<int N, int OVERLAP>
 class FFT
@@ -84,6 +101,20 @@ public:
       _fft.begin(),
       [](const float v) { return v / N; }
       );
+
+    for(size_t i=0; i < N; ++i)
+    {
+      const auto re = _fft[i * 2];
+      const auto im = _fft[i * 2 + 1];
+      float cre, cim;
+      // build product of complex value with it's own conjugate
+      detail::complex_conjugate(re, im, cre, cim);
+      detail::complex_multiply(re, im, cre, cim, cre, cim);
+      // now take the norm of the complex number, and store it
+      // back from the beginning of the vector
+      const auto l = sqrtf(cre * cre + cim * cim);
+      _fft[i] = l;
+    }
   }
 
   size_t size() const

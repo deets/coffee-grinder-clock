@@ -21,7 +21,7 @@ public:
   FFT()
     : _rb_reader(_buffer.reader())
   {
-    auto ret = dsps_fft2r_init_fc32(NULL, CONFIG_DSP_MAX_FFT_SIZE);
+    auto ret = dsps_fft2r_init_fc32(NULL, N);
     assert(ret == ESP_OK);
     dsps_wind_hann_f32(_window.data(), N);
     _complex_input.fill(0.0);
@@ -79,18 +79,7 @@ public:
   size_t copy_fft(T& container)
   {
     container.resize(_fft.size());
-    assert(container.size() == _fft.size());
-    // the data seems to be organized in
-    // N real and N imaginary components. I interleave them
-    // to the standard (re + im) format
-    auto re_it = _fft.begin();
-    auto im_it = re_it + N;
-    auto dst_it = container.begin();
-    for(auto i = 0; i < N; ++i)
-    {
-      *dst_it++ = *re_it++;
-      *dst_it++ = *im_it++;
-    }
+    std::copy(_fft.begin(), _fft.end(), container.begin());
     return _fft.size();
   }
 

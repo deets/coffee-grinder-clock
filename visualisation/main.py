@@ -19,7 +19,7 @@ from bokeh.models import Select
 
 FREQUENCY = 1000.0 # our sampling frequency in the MPU
 N = 1024
-HIGHPASS = 10
+HIGHPASS = 4
 
 
 class Visualisation:
@@ -212,9 +212,12 @@ class Visualisation:
         readings = readings[len(data):]
         readings.extend(data)
 
+        readings = np.array(readings, dtype=np.single)
         yf = fft(readings)
-
-        autopower = self._process_fft_output(yf)
+        spectrum = yf / N
+        complex_ = spectrum * np.conj(spectrum)
+        autopower = np.abs(complex_)
+        autopower = self._process_fft_output(autopower)
         patch = dict(
             readings=[(slice(0, len(readings)), readings)],
         )
@@ -224,19 +227,18 @@ class Visualisation:
         )
         self._fft_source.patch(patch)
 
-    def _process_fft_output(self, fft):
-        spectrum = fft / N
-        autopower = np.abs(spectrum * np.conj(spectrum))
+    def _process_fft_output(self, autopower):
         autopower = autopower[:len(autopower) // 2]
         autopower[:HIGHPASS] = [0.0] * HIGHPASS
-        #autopower = np.log10(autopower)
+        autopower = 20 * np.log10(autopower)
         return autopower
 
     def _process_fft_data(self, data):
         data = [v if not isnan(v) else -1 for v in data]
         data = np.array(data)
-        complex_ = data[::2] + 1j * data[1::2]
-        autopower = self._process_fft_output(complex_)
+        # forget about the upper half, it's garbage
+        fft_data = data[:N]
+        autopower = self._process_fft_output(fft_data)
         patch = dict(
             fft=[(slice(0, N // 2), autopower)],
         )

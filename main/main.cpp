@@ -85,7 +85,7 @@ void main_task(void*)
   auto fft = new FFT();
   Display display;
 
-  auto fft_display = new FFTDisplay<80, 40>;
+  auto fft_display = new FFTDisplay<128, 54, -200>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
   auto streamer = new DataStreamer("");
@@ -144,7 +144,7 @@ void main_task(void*)
       0,
       SMALL.size + 2
       );
-    fft_display->render(display, 4, 4);
+    fft_display->render(display, 0, 64 - fft_display->height);
     display.update();
     //ESP_LOGI("main", "fifo overflown: %i", mpu.fifo_overflown());
   }

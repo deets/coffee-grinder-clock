@@ -82,7 +82,7 @@ esp_err_t DataStreamer::get_fft_handler(httpd_req_t *req)
 {
   swap(_fft_in_flight, _fft_streaming);
   httpd_resp_send(req, reinterpret_cast<const char*>(_fft_streaming.data()), _fft_streaming.size() * sizeof(decltype(_fft_streaming)::value_type));
-  ESP_LOGI(TAG, "fft size: %i", _fft_streaming.size());
+  //ESP_LOGI(TAG, "fft size: %i", _fft_streaming.size());
   _fft_streaming.clear();
   return ESP_OK;
 }

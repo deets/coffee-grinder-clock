@@ -130,6 +130,11 @@ public:
     return _fft.size();
   }
 
+  const std::array<float, N*2>& fft() const
+  {
+    return _fft;
+  }
+
 private:
   std::array<float, N> _window;
   std::array<float, N * 2> _complex_input;

@@ -5,6 +5,7 @@
 #include "ringbuffer.hh"
 #include "wifi.hh"
 #include "streamer.hh"
+#include "fft-display.hh"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -82,8 +83,10 @@ void main_task(void*)
   auto rb = new RingBuffer<float, 2000>();
 
   auto fft = new FFT();
-
   Display display;
+
+  auto fft_display = new FFTDisplay<80, 40>;
+
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
   auto streamer = new DataStreamer("");
 
@@ -124,6 +127,7 @@ void main_task(void*)
           fft->compute();
           fft->postprocess();
           streamer->deliver_fft(fft);
+          fft_display->update(fft->fft().begin() + 10, fft->fft().end());
         }
       }
       );
@@ -140,6 +144,7 @@ void main_task(void*)
       0,
       SMALL.size + 2
       );
+    fft_display->render(display, 4, 4);
     display.update();
     //ESP_LOGI("main", "fifo overflown: %i", mpu.fifo_overflown());
   }

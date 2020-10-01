@@ -30,6 +30,7 @@ public:
   void circle(int x0, int y0, int rad, bool filled=false, uint8_t opt=U8G2_DRAW_ALL);
   void blit(const sprite_t&, int x, int y);
   void hline(int x, int x2, int y);
+  void vline(int x, int y1, int y2);
 
   void font_render(const font_info_t& font, const char*, int x, int y);
   int font_text_width(const font_info_t& font, const char*);

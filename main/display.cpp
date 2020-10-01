@@ -71,6 +71,15 @@ void Display::hline(int x, int x2, int y)
     );
 }
 
+
+void Display::vline(int x, int y, int y2)
+{
+  u8g2_DrawVLine(
+    &_u8g2,
+    x, y, abs(y2 - y) + 1
+    );
+}
+
 void Display::circle(int x0, int y0, int rad, bool filled, uint8_t opt)
 {
   if(filled)

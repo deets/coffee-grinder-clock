@@ -127,7 +127,16 @@ void main_task(void*)
           fft->compute();
           fft->postprocess();
           streamer->deliver_fft(fft);
-          fft_display->update(fft->fft().begin() + 10, fft->fft().end());
+          fft_display->update(
+            // We filter out the lowest frequency bins
+            // because they contain DC and the drift.
+            // The 10 is just experience, I need to dig
+            // down deeper to understand that.
+            fft->fft().begin() + 10,
+            // The concrete use-case does not warrant
+            // frequencies higher
+            fft->fft().begin() + fft->n / 4
+            );
         }
       }
       );

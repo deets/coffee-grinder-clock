@@ -15,12 +15,27 @@ public:
   template<typename T>
   void update(T begin, T end)
   {
-    assert(end - begin > W);
-    for(auto i=0; i < W; ++i)
+    const auto fft_width = end - begin;
+    assert(fft_width >= W);
+    // very simple downsampling algorithm
+    // based on bresenham
+    int accu = fft_width;
+    int divider = 0;
+    _bars.fill(0);
+    int i = 0;
+    for(; begin != end; ++begin)
     {
-      const auto value = *(begin + i);
-      //ESP_LOGI("fftd", "v: %f", value);
-      _bars[i] = value;
+      const auto value = *begin;
+      _bars[i] += value;
+      ++divider;
+      accu -= W;
+      if(accu <= 0)
+      {
+        _bars[i] /= divider;
+        divider = 0;
+        accu += fft_width;
+        ++i;
+      }
     }
   }
 
@@ -32,7 +47,6 @@ public:
     const auto db = log10f(max) * 20;
     // we don't drop below the max_limit for displaying
     const auto height = std::max(max, max_limit) - min;
-
 
     ESP_LOGI("fftd", "remapping case: %f", height);
     const auto scale = double(H) / height;

@@ -37,6 +37,8 @@ class FFT
   using rb_t = RingBuffer<complex, OVERLAP * 2>;
 
 public:
+  int n = N;
+
   FFT()
     : _rb_reader(_buffer.reader())
   {

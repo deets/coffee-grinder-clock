@@ -1,0 +1,9 @@
+#!/bin/bash
+if [ -e sdkconfig ]; then
+    rm -rf build
+    # possibly need to setup-esp32-sdk!
+    bear --use-c++ xtensa-esp32-elf-c++ esp32commander build
+else
+    echo "Not in the right directory"
+    exit 1
+fi

@@ -32,6 +32,11 @@ class Visualisation:
         if opts.output:
             self._output = self._create_recorder(opts.output)
 
+
+        self._fft_output = lambda x: None
+        if opts.fft:
+            self._fft_output = self._create_recorder(opts.fft, "--")
+
         self._raw_read = self._raw_read_from_http
         if opts.replay:
             self._raw_read = self._create_file_replay(opts.replay)
@@ -111,18 +116,21 @@ class Visualisation:
         )
         doc.add_root(layout)
 
-    def _create_recorder(self, filename):
+    def _create_recorder(self, filename, separator=None):
         outf = open(filename, "w")
 
         def _record(data):
             for value in data:
                 outf.write(f"{value}\n")
+            if separator is not None:
+                outf.write(f"{separator}\n")
             outf.flush()
         return _record
 
     def _parse_args(self):
         parser = argparse.ArgumentParser()
         parser.add_argument("-o", "--output", help="Record data into file")
+        parser.add_argument("-f", "--fft", help="Record FFT data into file")
         parser.add_argument(
             "-r",
             "--replay",
@@ -152,6 +160,7 @@ class Visualisation:
             data = self._fft_read()
             if data:
                 self._data_q.put(("fft", data))
+                self._fft_output(data)
 
             if next_tick:
                 self._doc.add_next_tick_callback(self._process_data)

@@ -1,0 +1,18 @@
+* Coffee Grinder Clock
+
+** Programming connector
+
+Looking on to the pinheader, solderside down
+
+|-----+-----+----+-----+----+----+-----|
+| IO0 | GND | NC | VCC | RX | TX | EN  |
+|-----+-----+----+-----+----+----+-----|
+| DTR | GND | NC | VCC | TX | RX | RTS |
+|-----+-----+----+-----+----+----+-----|
+
+
+** Running the visualisation
+
+#+begin_src bash
+pipenv run bokeh serve visualisation --args --fft fft.data
+#+end_src

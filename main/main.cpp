@@ -22,6 +22,8 @@ extern "C" void app_main();
 #define MPU6050_ADDRESS_AD0_HI 0x69
 #define MPU6050_RA_WHO_AM_I 0x75
 
+#define USE_WIFI 0
+
 namespace {
 
 const int MAINLOOP_WAIT = 16; // 60fps
@@ -78,7 +80,10 @@ private:
 
 void main_task(void*)
 {
+  #ifdef USE_WIFI
   setup_wifi();
+  #endif
+
   using FFT = FFT<1024, 16>;
   auto rb = new RingBuffer<float, 2000>();
 
@@ -88,7 +93,9 @@ void main_task(void*)
   auto fft_display = new FFTDisplay<128, 54, -200>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
+  #ifdef USE_WIFI
   auto streamer = new DataStreamer("");
+  #endif
 
   MPU6050 mpu(
     MPU6050_ADDRESS_AD0_HI,
@@ -121,12 +128,16 @@ void main_task(void*)
       {
         z_axis.update(v, elapsed_seconds);
         const auto rad = z_axis.rad();
+        #ifdef USE_WIFI
         streamer->feed(rad);
+        #endif
         if(fft->feed(rad, rad))
         {
           fft->compute();
           fft->postprocess();
+          #ifdef USE_WIFI
           streamer->deliver_fft(fft);
+          #endif
           fft_display->update(
             // We filter out the lowest frequency bins
             // because they contain DC and the drift.

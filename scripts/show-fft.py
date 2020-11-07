@@ -9,33 +9,41 @@ import matplotlib.pyplot as plt
 N = 1024
 T = 1.0 / 1000.0
 
+NOTCHES = [
+    (253, 259),
+    (285, 290),
+    (464, 472),
+]
+
+START = 250
+END = 2010
+THRESHOLD = -170.0
 
 def main():
-    window = hann(N, sym=True)
-    step = N // 16
-    values = []
-    for line in open(sys.argv[1]):
-        try:
-            values.append(float(line))
-        except ValueError:
-            pass
-
     ffts = []
-    for start in range(0, len(values), step):
-        try:
-            y = np.array(values[start:start + N])
-            y = y * window
-        except ValueError:
-            break
-        yf = fft(y)
-        spectrum = yf / N
-        autopower = np.abs(spectrum * np.conj(spectrum))
-        autopower = autopower[:len(autopower) // 2]
-        autopower[:2] = [0.0, 0.0]
-        ffts.append(autopower)
+    with open(sys.argv[1]) as inf:
+        current_fft = []
+        for line in inf:
+            line = line.strip()
+            if line == "--":
+                ffts.append(current_fft[:512])
+                current_fft = []
+            else:
+                current_fft.append(float(line))
 
     ffts = np.array(ffts)
+    # crop to relevant range
+    ffts = ffts[START:END, :]
+    # lowpass
+    ffts[:, :20] = 0.0
+    for low, high in NOTCHES:
+        ffts[:, low:high] = 0.0
+
     ffts = 20 * np.log10(ffts)
+
+    if THRESHOLD is not None:
+        ffts[ffts < THRESHOLD] = 0.0
+
     ffts = ffts.T
     plt.imshow(
         ffts,

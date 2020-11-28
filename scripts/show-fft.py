@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
+# Copyright: 2020, Diez B. Roggisch, Berlin . All rights reserved.
 import sys
 
 import numpy as np
-
-from scipy.fft import fft
-from scipy.signal import hann
 import matplotlib.pyplot as plt
+
+from common import load_fft_data
 
 N = 1024
 T = 1.0 / 1000.0
@@ -19,19 +20,9 @@ START = 250
 END = 2010
 THRESHOLD = -170.0
 
-def main():
-    ffts = []
-    with open(sys.argv[1]) as inf:
-        current_fft = []
-        for line in inf:
-            line = line.strip()
-            if line == "--":
-                ffts.append(current_fft[:512])
-                current_fft = []
-            else:
-                current_fft.append(float(line))
 
-    ffts = np.array(ffts)
+def main():
+    ffts = load_fft_data(sys.argv[1])
     # crop to relevant range
     ffts = ffts[START:END, :]
     # lowpass

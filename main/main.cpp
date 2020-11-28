@@ -28,8 +28,8 @@ namespace {
 
 const int MAINLOOP_WAIT = 16; // 60fps
 const int WIFI_WAIT = 500;
-const auto SDA = gpio_num_t(18);
-const auto SCL = gpio_num_t(21);
+const auto SDA = gpio_num_t(19);
+const auto SCL = gpio_num_t(20);
 
 class GyroAxisDisplay
 {
@@ -98,7 +98,7 @@ void main_task(void*)
   #endif
 
   MPU6050 mpu(
-    MPU6050_ADDRESS_AD0_HI,
+    MPU6050_ADDRESS_AD0_LOW,
     i2c,
     MPU6050::GYRO_2000_FS,
     MPU6050::ACC_2_FS

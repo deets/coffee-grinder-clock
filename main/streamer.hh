@@ -12,7 +12,7 @@
 
 #define STREAMER_TASK_STACK_SIZE 2000
 
-const size_t MAX_BUFFER_SIZE = 1000 * 5; // 5 seconds of data, 20Kb
+const size_t MAX_BUFFER_SIZE = 1000 * 2; // 5 seconds of data, 20Kb
 
 using http_callback_t = std::function<esp_err_t(httpd_req_t*)>;
 

@@ -1,5 +1,12 @@
 * Coffee Grinder Clock
 
+** LilyGo
+
+http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1321&FId=t3:50033:3
+
+
+[[./data/lilygo-t-display-s2.png]]
+
 ** Programming connector
 
 Looking on to the pinheader, solderside down

@@ -1,6 +1,7 @@
 // Copyright: 2019, Diez B. Roggisch, Berlin, all rights reserved
 #include "display.hh"
 #include "st7789.h"
+#include "colormap.hh"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -241,56 +242,6 @@ void setRotation(spi_device_handle_t spi, uint8_t m)
     }
 }
 
-
-
-void lcd_send_uint16_r(spi_device_handle_t spi, const uint16_t data, int32_t repeats)
-{
-  uint32_t word = data << 16 | data;
-  std::array<uint32_t, SPIFIFOSIZE> word_tmp;
-  word_tmp.fill(word);
-  spi_transaction_t t;
-  while (repeats > 0) {
-    uint16_t bytes_to_transfer = std::min(repeats * sizeof(uint16_t), SPIFIFOSIZE * sizeof(uint32_t));
-    std::memset(&t, 0, sizeof(t));  //Zero out the transaction
-    t.tx_buffer = word_tmp.data();  //Data
-    t.user = (void *) 1;                //D/C needs to be set to 1
-    t.length = bytes_to_transfer * 8;   //Len is in bytes, transaction length is in bits.
-    spi_device_transmit(spi, &t);        //Transmit!
-    repeats -= bytes_to_transfer / 2;
-  }
-}
-
-
-void fillRect(spi_device_handle_t spi, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
-{
-    // Clipping
-    if ((x >= _width) || (y >= _height)) return;
-
-    if (x < 0) {
-        w += x;
-        x = 0;
-    }
-    if (y < 0) {
-        h += y;
-        y = 0;
-    }
-
-    if ((x + w) > _width)  w = _width  - x;
-    if ((y + h) > _height) h = _height - y;
-
-    if ((w < 1) || (h < 1)) return;
-
-
-    setAddress(spi, x, y, x + w - 1, y + h - 1);
-
-    lcd_send_uint16_r(spi, SWAPBYTES(color), h * w);
-}
-
-void fillScreen(spi_device_handle_t spi, uint32_t color)
-{
-  fillRect(spi, 0, 0, _width, _height, color);
-}
-
 } // end namespace
 
 Display::Display()
@@ -333,6 +284,9 @@ Display::Display()
   lcd_init(_spi);
   setRotation(_spi, 0);
 
+  _buffer.resize(width() * height());
+  fill_palette(_palette);
+  _line.resize(width());
 }
 
 int Display::height() const { return _height; }
@@ -341,17 +295,32 @@ int Display::width() const { return _width; }
 
 void Display::clear()
 {
-  fillScreen(_spi, 0x000);
+  std::memset(_buffer.data(), 0, _buffer.size());
 }
 
 void Display::update()
 {
+  setAddress(_spi, 0, 0, width() - 1, height() - 1);
+  spi_transaction_t t;
+  size_t offset = 0;
+  for(size_t y=0; y < height(); ++y)
+  {
+    for(size_t x=0; x < width(); ++x)
+    {
+      _line[x] = SWAPBYTES(_palette[_buffer[offset + x]]);
+    }
+    offset += width();
+    std::memset(&t, 0, sizeof(t));  //Zero out the transaction
+    t.tx_buffer = _line.data();  //Data
+    t.user = (void *) 1;                //D/C needs to be set to 1
+    t.length = sizeof(decltype(_line)::value_type) * _line.size() * 8;   //Len is in bytes, transaction length is in bits.
+    spi_device_transmit(_spi, &t);        //Transmit!
+  }
 }
 
-void Display::draw_pixel(int x, int y, uint16_t color)
+void Display::draw_pixel(int x, int y, uint8_t color)
 {
-  setAddress(_spi,x, y, x, y);
-  lcd_write_word(_spi, color);
+  _buffer[x + y * width()] = color;
 }
 
 void Display::blit(const sprite_t& sprite, int x, int y)
@@ -375,12 +344,18 @@ void Display::circle(int x0, int y0, int rad, bool filled)
 {
 }
 
-void Display::font_render(const font_info_t& font, const char* text, int x, int y)
-{
-}
 
-
-int Display::font_text_width(const font_info_t& font, const char* text)
+void Display::flame()
 {
-  return 20;
+  std::copy(_buffer.begin() + width(), _buffer.end(), _buffer.begin());
+  std::transform(_buffer.begin(), _buffer.end() - width(), _buffer.begin(),
+                 [](const uint8_t& v)
+                 {
+                   return std::max(0, v - 1);//int(esp_random() & 0x1));
+                 });
+  size_t offset = width() * (height() - 1);
+  for(size_t x=0; x < width(); ++x)
+  {
+    _buffer[x + offset] = 0xff; //esp_random();
+  }
 }

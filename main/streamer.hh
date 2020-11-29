@@ -1,4 +1,9 @@
 // Copyright: 2020, Diez B. Roggisch, Berlin, all rights reserved
+#include <sdkconfig.h>
+#ifndef CONFIG_COFFEE_CLOCK_STREAM_DATA
+#error "CONFIG_COFFEE_CLOCK_STREAM_DATA not set!"
+#endif
+
 #pragma once
 
 #include <freertos/FreeRTOS.h>

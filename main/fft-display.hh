@@ -68,14 +68,14 @@ public:
 private:
   void render_db(Display& display, float db, int x, int y)
   {
-    char db_buffer[50];
-    sprintf(db_buffer, "dB: %i", int(db));
-    display.font_render(
-      SMALL,
-      db_buffer,
-      x + W - display.font_text_width(SMALL, db_buffer),
-      y + SMALL.size + 2
-      );
+    // char db_buffer[50];
+    // sprintf(db_buffer, "dB: %i", int(db));
+    // display.font_render(
+    //   SMALL,
+    //   db_buffer,
+    //   x + W - display.font_text_width(SMALL, db_buffer),
+    //   y + SMALL.size + 2
+    //   );
 
   }
   std::array<float, W> _bars;

@@ -3,10 +3,15 @@
 #include "mpu6050.hh"
 #include "fft.hh"
 #include "ringbuffer.hh"
+
+#ifdef CONFIG_COFFEE_CLOCK_STREAM_DATA
 #include "wifi.hh"
 #include "streamer.hh"
+#endif
+
 #include "fft-display.hh"
 
+#include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -52,12 +57,12 @@ public:
   {
     if(_name)
     {
-      display.font_render(
-        SMALL,
-        _name,
-        _x - 1,
-        SMALL.size + _y - 1
-      );
+      // display.font_render(
+      //   SMALL,
+      //   _name,
+      //   _x - 1,
+      //   SMALL.size + _y - 1
+      // );
     }
     const auto r = static_cast<float>(_radius) + _offset;
     const auto cx = int(cos(rad()) * r) + _x;
@@ -80,8 +85,9 @@ private:
 
 void main_task(void*)
 {
-  #ifdef USE_WIFI
+  #ifdef CONFIG_COFFEE_CLOCK_STREAM_DATA
   setup_wifi();
+  auto streamer = new DataStreamer("");
   #endif
 
   using FFT = FFT<1024, 16>;
@@ -93,9 +99,6 @@ void main_task(void*)
   auto fft_display = new FFTDisplay<128, 54, -200>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
-  #ifdef USE_WIFI
-  auto streamer = new DataStreamer("");
-  #endif
 
   MPU6050 mpu(
     MPU6050_ADDRESS_AD0_LOW,
@@ -111,6 +114,13 @@ void main_task(void*)
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
 
   auto display_reader = rb->reader();
+
+  auto free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  auto largest_free = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  ESP_LOGI("main", "8 bit free: %i, 8 bit largest_free: %i", free, largest_free);
+  free = heap_caps_get_free_size(MALLOC_CAP_32BIT);
+  largest_free = heap_caps_get_largest_free_block(MALLOC_CAP_32BIT);
+  ESP_LOGI("main", "32 bit free: %i, 32 bit largest_free: %i", free, largest_free);
 
   const auto start = esp_timer_get_time();
   bool running = true;
@@ -153,21 +163,20 @@ void main_task(void*)
     //         );
     //     }
     //   }
-    //   );
-    display.clear();
-    display.draw_pixel(x, y, 0xff0);
+    //   );1.496831
     x = (x + 1) % display.width();
     const float elapsed = float(esp_timer_get_time() - start) / 1000000.0;
     char time_buffer[50];
     ESP_LOGI("main", "elapsed: %f", elapsed);
     sprintf(time_buffer, "%f", elapsed);
-    display.font_render(
-      SMALL,
-      time_buffer,
-      0,
-      SMALL.size + 2
-      );
+    // display.font_render(
+    //   SMALL,
+    //   time_buffer,
+    //   0,
+    //   SMALL.size + 2
+    //   );
     //fft_display->render(display, 0, 64 - fft_display->height);
+    display.flame();
     display.update();
     //ESP_LOGI("main", "fifo overflown: %i", mpu.fifo_overflown());
   }

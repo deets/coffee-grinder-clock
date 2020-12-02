@@ -286,6 +286,9 @@ Display::Display()
 
   _buffer.resize(width() * height());
   fill_palette(_palette);
+  // always tie 0 to black and 1 to white
+  _palette[0] = 0x0;
+  _palette[1] = 0xffff;
   _line.resize(width());
 }
 
@@ -338,6 +341,12 @@ void Display::hline(int x, int x2, int y)
 
 void Display::vline(int x, int y, int y2)
 {
+  if(y > y2) { int h = y; y = y2; y2 = h; }
+  auto length = y2 - y + 1;
+  for(int yd=0; yd < length; ++yd)
+  {
+    draw_pixel(x, y + yd, 1);
+  }
 }
 
 void Display::circle(int x0, int y0, int rad, bool filled)

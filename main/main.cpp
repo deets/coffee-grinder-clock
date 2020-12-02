@@ -96,7 +96,7 @@ void main_task(void*)
   auto fft = new FFT();
   Display display;
 
-  auto fft_display = new FFTDisplay<128, 54, -200>;
+  auto fft_display = new FFTDisplay<135, 60, -200>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
 
@@ -124,47 +124,42 @@ void main_task(void*)
 
   const auto start = esp_timer_get_time();
   bool running = true;
-  int x = 0;
-  int y = display.height() / 2;
-  auto previous_wake_time = xTaskGetTickCount();
   while(running)
   {
-    //vTaskDelayUntil(&previous_wake_time, pdMS_TO_TICKS(MAINLOOP_WAIT));
-    // mpu.consume_fifo(
-    //   [rb](const MPU6050::gyro_data_t& entry)
-    //   {
-    //     rb->append(entry.gyro[2]);
-    //   }
-    //   );
-    // display_reader.consume(
-    //   [&](const float& v)
-    //   {
-    //     z_axis.update(v, elapsed_seconds);
-    //     const auto rad = z_axis.rad();
-    //     #ifdef USE_WIFI
-    //     streamer->feed(rad);
-    //     #endif
-    //     if(fft->feed(rad, rad))
-    //     {
-    //       fft->compute();
-    //       fft->postprocess();
-    //       #ifdef USE_WIFI
-    //       streamer->deliver_fft(fft);
-    //       #endif
-    //       fft_display->update(
-    //         // We filter out the lowest frequency bins
-    //         // because they contain DC and the drift.
-    //         // The 10 is just experience, I need to dig
-    //         // down deeper to understand that.
-    //         fft->fft().begin() + 10,
-    //         // The concrete use-case does not warrant
-    //         // frequencies higher
-    //         fft->fft().begin() + fft->n / 4
-    //         );
-    //     }
-    //   }
-    //   );1.496831
-    x = (x + 1) % display.width();
+    mpu.consume_fifo(
+      [rb](const MPU6050::gyro_data_t& entry)
+      {
+        rb->append(entry.gyro[2]);
+      }
+      );
+    display_reader.consume(
+      [&](const float& v)
+      {
+        z_axis.update(v, elapsed_seconds);
+        const auto rad = z_axis.rad();
+        #ifdef CONFIG_COFFEE_CLOCK_STREAM_DATA
+        streamer->feed(rad);
+        #endif
+        if(fft->feed(rad, rad))
+        {
+          fft->compute();
+          fft->postprocess();
+          #ifdef CONFIG_COFFEE_CLOCK_STREAM_DATA
+          streamer->deliver_fft(fft);
+          #endif
+          fft_display->update(
+            // We filter out the lowest frequency bins
+            // because they contain DC and the drift.
+            // The 10 is just experience, I need to dig
+            // down deeper to understand that.
+            fft->fft().begin() + 10,
+            // The concrete use-case does not warrant
+            // frequencies higher
+            fft->fft().begin() + fft->n / 4
+            );
+        }
+      }
+      );
     const float elapsed = float(esp_timer_get_time() - start) / 1000000.0;
     char time_buffer[50];
     ESP_LOGI("main", "elapsed: %f", elapsed);
@@ -175,8 +170,8 @@ void main_task(void*)
     //   0,
     //   SMALL.size + 2
     //   );
-    //fft_display->render(display, 0, 64 - fft_display->height);
-    display.flame();
+    display.clear();
+    fft_display->render(display, 0, 64 - fft_display->height);
     display.update();
     //ESP_LOGI("main", "fifo overflown: %i", mpu.fifo_overflown());
   }

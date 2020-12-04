@@ -96,7 +96,7 @@ void main_task(void*)
   auto fft = new FFT();
   Display display;
 
-  auto fft_display = new FFTDisplay<54, 60, -200>;
+  auto fft_display = new FFTDisplay<54>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
 
@@ -150,9 +150,9 @@ void main_task(void*)
           fft_display->update(
             // We filter out the lowest frequency bins
             // because they contain DC and the drift.
-            // The 10 is just experience, I need to dig
+            // The valie is just experience, I need to dig
             // down deeper to understand that.
-            fft->fft().begin() + 10,
+            fft->fft().begin() + 3,
             // The concrete use-case does not warrant
             // frequencies higher
             fft->fft().begin() + fft->n / 4
@@ -171,10 +171,10 @@ void main_task(void*)
     //   0,
     //   SMALL.size + 2
     //   );
-    display.clear();
     if(display.ready())
     {
-      fft_display->render(display, 0, 64 - fft_display->height);
+      display.vscroll();
+      fft_display->render(display, 0, display.height() - 1);
       display.update();
     }
     else

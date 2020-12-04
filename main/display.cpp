@@ -379,13 +379,13 @@ void Display::hline(int x, int x2, int y)
 }
 
 
-void Display::vline(int x, int y, int y2)
+void Display::vline(int x, int y, int y2, uint8_t color)
 {
   if(y > y2) { int h = y; y = y2; y2 = h; }
   auto length = y2 - y + 1;
   for(int yd=0; yd < length; ++yd)
   {
-    draw_pixel(x, y + yd, 1);
+    draw_pixel(x, y + yd, color);
   }
 }
 
@@ -394,17 +394,7 @@ void Display::circle(int x0, int y0, int rad, bool filled)
 }
 
 
-void Display::flame()
+void Display::vscroll()
 {
   std::copy(_buffer.begin() + width(), _buffer.end(), _buffer.begin());
-  std::transform(_buffer.begin(), _buffer.end() - width(), _buffer.begin(),
-                 [](const uint8_t& v)
-                 {
-                   return std::max(0, v - 1);//int(esp_random() & 0x1));
-                 });
-  size_t offset = width() * (height() - 1);
-  for(size_t x=0; x < width(); ++x)
-  {
-    _buffer[x + offset] = 0xff; //esp_random();
-  }
 }

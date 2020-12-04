@@ -34,8 +34,8 @@ public:
   void circle(int x0, int y0, int rad, bool filled=false);
   void blit(const sprite_t&, int x, int y);
   void hline(int x, int x2, int y);
-  void vline(int x, int y1, int y2);
-  void flame();
+  void vline(int x, int y1, int y2, uint8_t color);
+  void vscroll();
 
 private:
   friend void lcd_spi_pre_transfer_callback(spi_transaction_t *t);

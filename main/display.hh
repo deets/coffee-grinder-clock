@@ -3,9 +3,11 @@
 #pragma once
 
 #include "driver/spi_master.h"
+#include <freertos/event_groups.h>
 
 #include <vector>
 #include <array>
+#include <atomic>
 
 struct sprite_t
 {
@@ -19,6 +21,8 @@ struct sprite_t
 class Display {
 public:
   Display();
+
+  bool ready();
 
   int height() const;
   int width() const;
@@ -34,9 +38,25 @@ public:
   void flame();
 
 private:
+  friend void lcd_spi_pre_transfer_callback(spi_transaction_t *t);
+  friend void lcd_spi_post_transfer_callback(spi_transaction_t *t);
+
+  void lcd_cmd(spi_device_handle_t spi, const uint8_t cmd);
+  void lcd_data(spi_device_handle_t spi, const uint8_t *data, int len);
+  void lcd_write_u8(spi_device_handle_t spi, const uint8_t data);
+  void lcd_init(spi_device_handle_t spi);
+  void lcd_write_word(spi_device_handle_t spi, const uint16_t data);
+  void setAddress(spi_device_handle_t spi, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
+  void setRotation(spi_device_handle_t spi, uint8_t m);
+
+  void dc(spi_transaction_t&, int);
 
   spi_device_handle_t _spi;
   std::vector<uint8_t> _buffer;
   std::array<uint16_t, 256> _palette;
   std::vector<uint16_t> _line;
+  EventGroupHandle_t _transaction_event_group;
+  spi_transaction_t _spi_transaction;
+  int _dc;
+  std::atomic<bool> _spi_transaction_ongoing;
 };

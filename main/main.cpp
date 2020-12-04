@@ -90,13 +90,13 @@ void main_task(void*)
   auto streamer = new DataStreamer("");
   #endif
 
-  using FFT = FFT<1024, 16>;
+  using FFT = FFT<256, 16>;
   auto rb = new RingBuffer<float, 2000>();
 
   auto fft = new FFT();
   Display display;
 
-  auto fft_display = new FFTDisplay<135, 60, -200>;
+  auto fft_display = new FFTDisplay<54, 60, -200>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
 
@@ -122,7 +122,7 @@ void main_task(void*)
   largest_free = heap_caps_get_largest_free_block(MALLOC_CAP_32BIT);
   ESP_LOGI("main", "32 bit free: %i, 32 bit largest_free: %i", free, largest_free);
 
-  const auto start = esp_timer_get_time();
+  auto timestamp = esp_timer_get_time();
   bool running = true;
   while(running)
   {
@@ -160,10 +160,11 @@ void main_task(void*)
         }
       }
       );
-    const float elapsed = float(esp_timer_get_time() - start) / 1000000.0;
-    char time_buffer[50];
-    ESP_LOGI("main", "elapsed: %f", elapsed);
-    sprintf(time_buffer, "%f", elapsed);
+    const auto now = esp_timer_get_time();
+    const float fps = 1.0 / (float(now - timestamp) / 1000000.0);
+    timestamp = now;
+    ESP_LOGI("main", "fps: %f", fps);
+    //                   sprintf(time_buffer, "%f", elapsed);
     // display.font_render(
     //   SMALL,
     //   time_buffer,
@@ -171,9 +172,15 @@ void main_task(void*)
     //   SMALL.size + 2
     //   );
     display.clear();
-    fft_display->render(display, 0, 64 - fft_display->height);
-    display.update();
-    //ESP_LOGI("main", "fifo overflown: %i", mpu.fifo_overflown());
+    if(display.ready())
+    {
+      fft_display->render(display, 0, 64 - fft_display->height);
+      display.update();
+    }
+    else
+    {
+      ESP_LOGI("main", "display not ready");
+    }
   }
 }
 

@@ -21,6 +21,41 @@ uint16_t _init_width = 135;
 uint16_t _width = 135;
 uint16_t _height = 240;
 
+} // end namespace
+
+//This function is called (in irq context!) just before a transmission starts. It will
+//set the D/C line to the value indicated in the user field.
+void lcd_spi_pre_transfer_callback(spi_transaction_t *t)
+{
+  int dc = static_cast<Display*>(t->user)->_dc;
+  gpio_set_level(gpio_num_t(PIN_NUM_DC), dc);
+}
+
+
+// This function is called (in irq context!) when the transation is finished. It
+// resets the transaction status
+void IRAM_ATTR lcd_spi_post_transfer_callback(spi_transaction_t *t)
+{
+  auto display = static_cast<Display*>(t->user);
+  display->_spi_transaction_ongoing = false;
+  // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  // auto result = xEventGroupSetBitsFromISR(
+  //   display->_transaction_event_group,
+  //   BIT_0,
+  //   &xHigherPriorityTaskWoken );
+
+  // /* Was the message posted successfully? */
+  // if( result == pdPASS)
+  // {
+  //   /* If xHigherPriorityTaskWoken is now set to pdTRUE then a context
+  //      switch should be requested.  The macro used is port specific and will
+  //      be either portYIELD_FROM_ISR() or portEND_SWITCHING_ISR() - refer to
+  //      the documentation page for the port being used. */
+  //   portYIELD_FROM_ISR();
+  // }
+}
+
 /* Send a command to the LCD. Uses spi_device_polling_transmit, which waits
  * until the transfer is complete.
  *
@@ -28,14 +63,14 @@ uint16_t _height = 240;
  * mode for higher speed. The overhead of interrupt transactions is more than
  * just waiting for the transaction to complete.
  */
-void lcd_cmd(spi_device_handle_t spi, const uint8_t cmd)
+void Display::lcd_cmd(spi_device_handle_t spi, const uint8_t cmd)
 {
   esp_err_t ret;
   spi_transaction_t t;
   memset(&t, 0, sizeof(t));                   //Zero out the transaction
   t.length = 8;                               //Command is 8 bits
   t.tx_buffer = &cmd;                         //The data is the cmd itself
-  t.user = (void *)0;                         //D/C needs to be set to 0
+  dc(t, 0);                         //D/C needs to be set to 0
   ret = spi_device_polling_transmit(spi, &t); //Transmit!
   assert(ret == ESP_OK);                      //Should have had no issues.
 }
@@ -47,7 +82,7 @@ void lcd_cmd(spi_device_handle_t spi, const uint8_t cmd)
  * mode for higher speed. The overhead of interrupt transactions is more than
  * just waiting for the transaction to complete.
  */
-void lcd_data(spi_device_handle_t spi, const uint8_t *data, int len)
+void Display::lcd_data(spi_device_handle_t spi, const uint8_t *data, int len)
 {
     esp_err_t ret;
     spi_transaction_t t;
@@ -55,26 +90,18 @@ void lcd_data(spi_device_handle_t spi, const uint8_t *data, int len)
     std::memset(&t, 0, sizeof(t));                   //Zero out the transaction
     t.length = len * 8;                         //Len is in bytes, transaction length is in bits.
     t.tx_buffer = data;                         //Data
-    t.user = (void *)1;                         //D/C needs to be set to 1
+    dc(t, 1);                         //D/C needs to be set to 1
     ret = spi_device_polling_transmit(spi, &t); //Transmit!
     assert(ret == ESP_OK);                      //Should have had no issues.
 }
 
-//This function is called (in irq context!) just before a transmission starts. It will
-//set the D/C line to the value indicated in the user field.
-void lcd_spi_pre_transfer_callback(spi_transaction_t *t)
-{
-    int dc = (int)t->user;
-    gpio_set_level(gpio_num_t(PIN_NUM_DC), dc);
-}
-
-void lcd_write_u8(spi_device_handle_t spi, const uint8_t data)
+void Display::lcd_write_u8(spi_device_handle_t spi, const uint8_t data)
 {
   lcd_data(spi, &data, 1);
 }
 
 //Initialize the display
-void lcd_init(spi_device_handle_t spi)
+void Display::lcd_init(spi_device_handle_t spi)
 {
     //Initialize non-SPI GPIOs
   gpio_set_direction(gpio_num_t(PIN_NUM_DC), GPIO_MODE_OUTPUT);
@@ -185,7 +212,7 @@ void lcd_init(spi_device_handle_t spi)
   gpio_set_level(gpio_num_t(PIN_NUM_BCKL), 1);
 }
 
-void lcd_write_word(spi_device_handle_t spi, const uint16_t data)
+void Display::lcd_write_word(spi_device_handle_t spi, const uint16_t data)
 {
     uint8_t val;
     val = data >> 8 ;
@@ -194,7 +221,7 @@ void lcd_write_word(spi_device_handle_t spi, const uint16_t data)
     lcd_data(spi, &val, 1);
 }
 
-void setAddress(spi_device_handle_t spi, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+void Display::setAddress(spi_device_handle_t spi, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
 {
   lcd_cmd(spi, ST7789_CASET);
   lcd_write_word(spi, x1 + colstart);
@@ -205,7 +232,7 @@ void setAddress(spi_device_handle_t spi, uint16_t x1, uint16_t y1, uint16_t x2, 
   lcd_cmd(spi, ST7789_RAMWR);
 }
 
-void setRotation(spi_device_handle_t spi, uint8_t m)
+void Display::setRotation(spi_device_handle_t spi, uint8_t m)
 {
     uint8_t rotation = m % 4;
     lcd_cmd(spi, ST7789_MADCTL);
@@ -242,7 +269,6 @@ void setRotation(spi_device_handle_t spi, uint8_t m)
     }
 }
 
-} // end namespace
 
 Display::Display()
 {
@@ -272,7 +298,7 @@ Display::Display()
     .flags = 0,
     .queue_size = 7,                        //We want to be able to queue 7 transactions at a time
     .pre_cb = lcd_spi_pre_transfer_callback, //Specify pre-transfer callback to handle D/C line
-    .post_cb = nullptr,
+    .post_cb = lcd_spi_post_transfer_callback,
   };
   //Initialize the SPI bus
   ret = spi_bus_initialize(LCD_HOST, &buscfg, DMA_CHAN);
@@ -290,6 +316,8 @@ Display::Display()
   _palette[0] = 0x0;
   _palette[1] = 0xffff;
   _line.resize(width());
+  _transaction_event_group = xEventGroupCreate();
+  assert(_transaction_event_group);
 }
 
 int Display::height() const { return _height; }
@@ -304,7 +332,6 @@ void Display::clear()
 void Display::update()
 {
   setAddress(_spi, 0, 0, width() - 1, height() - 1);
-  spi_transaction_t t;
   size_t offset = 0;
   for(size_t y=0; y < height(); ++y)
   {
@@ -313,13 +340,26 @@ void Display::update()
       _line[x] = SWAPBYTES(_palette[_buffer[offset + x]]);
     }
     offset += width();
-    std::memset(&t, 0, sizeof(t));  //Zero out the transaction
-    t.tx_buffer = _line.data();  //Data
-    t.user = (void *) 1;                //D/C needs to be set to 1
-    t.length = sizeof(decltype(_line)::value_type) * _line.size() * 8;   //Len is in bytes, transaction length is in bits.
-    spi_device_transmit(_spi, &t);        //Transmit!
+    std::memset(&_spi_transaction, 0, sizeof(_spi_transaction));  //Zero out the transaction
+    _spi_transaction.tx_buffer = _line.data();  //Data
+    dc(_spi_transaction, 1);
+    _spi_transaction.length = sizeof(decltype(_line)::value_type) * _line.size() * 8;   //Len is in byte
+    _spi_transaction_ongoing = true;
+    spi_device_queue_trans(_spi, &_spi_transaction, portMAX_DELAY);
   }
 }
+
+void Display::dc(spi_transaction_t& t, int dc)
+{
+  t.user = this;
+  _dc = dc;
+}
+
+bool Display::ready()
+{
+  return !_spi_transaction_ongoing;
+}
+
 
 void Display::draw_pixel(int x, int y, uint8_t color)
 {

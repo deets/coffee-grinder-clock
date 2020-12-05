@@ -2,6 +2,8 @@
 // -*- mode: c++-mode -*-
 #pragma once
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "driver/spi_master.h"
 #include <freertos/event_groups.h>
 
@@ -51,11 +53,16 @@ private:
 
   void dc(spi_transaction_t&, int);
 
+  static void s_update_task(void*);
+  void update_task();
+
   spi_device_handle_t _spi;
   std::vector<uint8_t> _buffer;
   std::array<uint16_t, 256> _palette;
   std::vector<uint16_t> _line;
-  EventGroupHandle_t _transaction_event_group;
+  EventGroupHandle_t _update_events;
+
+  TaskHandle_t _update_task_handle;
   spi_transaction_t _spi_transaction;
   int _dc;
   std::atomic<bool> _spi_transaction_ongoing;

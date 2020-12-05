@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
+#include <esp_log.h>
 
 #include <array>
 #include <algorithm>
@@ -21,6 +22,8 @@ uint16_t _init_width = 135;
 uint16_t _width = 135;
 uint16_t _height = 240;
 
+#define TRANSMIT_BUFFER 1
+
 } // end namespace
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -29,31 +32,6 @@ void lcd_spi_pre_transfer_callback(spi_transaction_t *t)
 {
   int dc = static_cast<Display*>(t->user)->_dc;
   gpio_set_level(gpio_num_t(PIN_NUM_DC), dc);
-}
-
-
-// This function is called (in irq context!) when the transation is finished. It
-// resets the transaction status
-void IRAM_ATTR lcd_spi_post_transfer_callback(spi_transaction_t *t)
-{
-  auto display = static_cast<Display*>(t->user);
-  display->_spi_transaction_ongoing = false;
-  // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
-  // auto result = xEventGroupSetBitsFromISR(
-  //   display->_transaction_event_group,
-  //   BIT_0,
-  //   &xHigherPriorityTaskWoken );
-
-  // /* Was the message posted successfully? */
-  // if( result == pdPASS)
-  // {
-  //   /* If xHigherPriorityTaskWoken is now set to pdTRUE then a context
-  //      switch should be requested.  The macro used is port specific and will
-  //      be either portYIELD_FROM_ISR() or portEND_SWITCHING_ISR() - refer to
-  //      the documentation page for the port being used. */
-  //   portYIELD_FROM_ISR();
-  // }
 }
 
 /* Send a command to the LCD. Uses spi_device_polling_transmit, which waits
@@ -298,7 +276,7 @@ Display::Display()
     .flags = 0,
     .queue_size = 7,                        //We want to be able to queue 7 transactions at a time
     .pre_cb = lcd_spi_pre_transfer_callback, //Specify pre-transfer callback to handle D/C line
-    .post_cb = lcd_spi_post_transfer_callback,
+    .post_cb = nullptr,
   };
   //Initialize the SPI bus
   ret = spi_bus_initialize(LCD_HOST, &buscfg, DMA_CHAN);
@@ -316,8 +294,34 @@ Display::Display()
   _palette[0] = 0x0;
   _palette[1] = 0xffff;
   _line.resize(width());
-  _transaction_event_group = xEventGroupCreate();
-  assert(_transaction_event_group);
+  _update_events = xEventGroupCreate();
+  assert(_update_events);
+
+  _update_task_handle = nullptr;
+  xTaskCreate(
+    Display::s_update_task,
+    "dup", 8192, this, tskIDLE_PRIORITY + 1, &_update_task_handle);
+  assert(_update_task_handle);
+}
+
+void Display::s_update_task(void* display)
+{
+  static_cast<Display*>(display)->update_task();
+}
+
+
+void Display::update_task()
+{
+  while(true)
+  {
+    xEventGroupWaitBits(
+      _update_events,   /* The event group being tested. */
+      TRANSMIT_BUFFER, /* The bits within the event group to wait for. */
+      pdTRUE,        /* BIT_0 & BIT_4 should be cleared before returning. */
+      pdFALSE,       /* Don't wait for both bits, either bit will do. */
+      portMAX_DELAY);/* Wait a maximum of 100ms for either bit to be set. */
+    ESP_LOGE("dup", "should run!");
+  }
 }
 
 int Display::height() const { return _height; }
@@ -331,8 +335,15 @@ void Display::clear()
 
 void Display::update()
 {
+  xEventGroupSetBits(
+    _update_events,
+    TRANSMIT_BUFFER );
+
   setAddress(_spi, 0, 0, width() - 1, height() - 1);
   size_t offset = 0;
+
+  _spi_transaction_ongoing = true;
+
   for(size_t y=0; y < height(); ++y)
   {
     for(size_t x=0; x < width(); ++x)
@@ -344,9 +355,9 @@ void Display::update()
     _spi_transaction.tx_buffer = _line.data();  //Data
     dc(_spi_transaction, 1);
     _spi_transaction.length = sizeof(decltype(_line)::value_type) * _line.size() * 8;   //Len is in byte
-    _spi_transaction_ongoing = true;
-    spi_device_queue_trans(_spi, &_spi_transaction, portMAX_DELAY);
+    spi_device_transmit(_spi, &_spi_transaction);
   }
+  _spi_transaction_ongoing = false;
 }
 
 void Display::dc(spi_transaction_t& t, int dc)
@@ -357,7 +368,8 @@ void Display::dc(spi_transaction_t& t, int dc)
 
 bool Display::ready()
 {
-  return !_spi_transaction_ongoing;
+  return true;
+  //return !_spi_transaction_ongoing;
 }
 
 

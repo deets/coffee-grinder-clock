@@ -153,8 +153,9 @@ void main_task(void*)
             // The valie is just experience, I need to dig
             // down deeper to understand that.
             fft->fft().begin() + 10,
-            // The concrete use-case does not warrant
-            // frequencies higher
+            // This would go to n / 2, as we throw away
+            // the negative frequencies. But this use-case
+            // doesen't warrant those higher frequencies.
             fft->fft().begin() + fft->n / 4
             );
         }

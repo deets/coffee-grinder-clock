@@ -61,8 +61,17 @@ public:
     {
       for(size_t i=0; i < W; ++i)
       {
-        const auto position = int(lerp(0.0, fft_width - 1, float(i) / (W - 1)));
-        _bars[i] = *(begin + position);
+        const auto position = lerp(0.0, fft_width - 1, float(i) / (W - 1));
+        const auto lower = int(floor(position));
+        const auto upper = int(ceil(position));
+        if(lower == upper)
+        {
+          _bars[i] = *(begin + lower);
+        }
+        else
+        {
+          _bars[i] = lerp(*(begin + lower), *(begin + upper), position - lower) ;
+        }
       }
     }
   }

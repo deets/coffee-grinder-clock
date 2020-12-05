@@ -55,6 +55,7 @@ private:
 
   static void s_update_task(void*);
   void update_task();
+  void update_work();
 
   spi_device_handle_t _spi;
   std::vector<uint8_t> _buffer;

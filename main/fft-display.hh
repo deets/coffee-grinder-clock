@@ -81,7 +81,6 @@ public:
     const auto min = Transform::transform(*std::min_element(_bars.begin(), _bars.end()));
     const auto max = Transform::transform(*std::max_element(_bars.begin(), _bars.end()));
     const auto height = max - min;
-    ESP_LOGI("fftd", "height: %f, max: %f, min: %f", height, max, min);
     const auto scale = 253.0 / height;
     std::transform(
       _bars.begin(),

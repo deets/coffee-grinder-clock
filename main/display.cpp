@@ -302,26 +302,12 @@ Display::Display()
     Display::s_update_task,
     "dup", 8192, this, tskIDLE_PRIORITY + 1, &_update_task_handle);
   assert(_update_task_handle);
+  _spi_transaction_ongoing = false;
 }
 
 void Display::s_update_task(void* display)
 {
   static_cast<Display*>(display)->update_task();
-}
-
-
-void Display::update_task()
-{
-  while(true)
-  {
-    xEventGroupWaitBits(
-      _update_events,   /* The event group being tested. */
-      TRANSMIT_BUFFER, /* The bits within the event group to wait for. */
-      pdTRUE,        /* BIT_0 & BIT_4 should be cleared before returning. */
-      pdFALSE,       /* Don't wait for both bits, either bit will do. */
-      portMAX_DELAY);/* Wait a maximum of 100ms for either bit to be set. */
-    ESP_LOGE("dup", "should run!");
-  }
 }
 
 int Display::height() const { return _height; }
@@ -333,16 +319,30 @@ void Display::clear()
   std::memset(_buffer.data(), 0, _buffer.size());
 }
 
-void Display::update()
-{
-  xEventGroupSetBits(
-    _update_events,
-    TRANSMIT_BUFFER );
+void Display::update() {
+    _spi_transaction_ongoing = true;
+    xEventGroupSetBits(_update_events, TRANSMIT_BUFFER);
+}
 
+void Display::update_task()
+{
+  while(true)
+  {
+    xEventGroupWaitBits(
+      _update_events,   /* The event group being tested. */
+      TRANSMIT_BUFFER, /* The bits within the event group to wait for. */
+      pdTRUE,        /* BIT_0 & BIT_4 should be cleared before returning. */
+      pdFALSE,       /* Don't wait for both bits, either bit will do. */
+      portMAX_DELAY);/* Wait a maximum of 100ms for either bit to be set. */
+    update_work();
+    _spi_transaction_ongoing = false;
+  }
+}
+
+void Display::update_work()
+{
   setAddress(_spi, 0, 0, width() - 1, height() - 1);
   size_t offset = 0;
-
-  _spi_transaction_ongoing = true;
 
   for(size_t y=0; y < height(); ++y)
   {
@@ -357,7 +357,11 @@ void Display::update()
     _spi_transaction.length = sizeof(decltype(_line)::value_type) * _line.size() * 8;   //Len is in byte
     spi_device_transmit(_spi, &_spi_transaction);
   }
-  _spi_transaction_ongoing = false;
+}
+
+bool Display::ready()
+{
+  return !_spi_transaction_ongoing.load();
 }
 
 void Display::dc(spi_transaction_t& t, int dc)
@@ -365,13 +369,6 @@ void Display::dc(spi_transaction_t& t, int dc)
   t.user = this;
   _dc = dc;
 }
-
-bool Display::ready()
-{
-  return true;
-  //return !_spi_transaction_ongoing;
-}
-
 
 void Display::draw_pixel(int x, int y, uint8_t color)
 {
@@ -389,7 +386,6 @@ void Display::set_color(uint8_t color)
 void Display::hline(int x, int x2, int y)
 {
 }
-
 
 void Display::vline(int x, int y, int y2, uint8_t color)
 {

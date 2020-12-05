@@ -161,12 +161,13 @@ void main_task(void*)
         }
       }
       );
-    const auto now = esp_timer_get_time();
-    const float fps = 1.0 / (float(now - timestamp) / 1000000.0);
-    timestamp = now;
-    ESP_LOGI("main", "fps: %f", fps);
     if(display.ready())
     {
+      const auto now = esp_timer_get_time();
+      const float fps = 1.0 / (float(now - timestamp) / 1000000.0);
+      timestamp = now;
+      ESP_LOGI("main", "fps: %f", fps);
+
       display.vscroll();
       fft_display->render(display, 0, display.height() - 1);
       display.update();

@@ -3,7 +3,27 @@
 #include "display.hh"
 #include <esp_log.h>
 
-template<int W>
+#include <cmath>
+
+float lerp(float a, float b, float f) { return a + f * (b - a); }
+
+struct LogTransform
+{
+  static float transform(const float& value)
+  {
+    return log10f(value) * 20;
+  }
+};
+
+struct NoTransform
+{
+  static float transform(const float& value)
+  {
+    return value;
+  }
+};
+
+template<int W, typename Transform=NoTransform>
 class FFTDisplay
 {
 
@@ -13,36 +33,46 @@ public:
   template<typename T>
   void update(T begin, T end)
   {
-    const auto fft_width = end - begin;
-    assert(fft_width >= W);
-    // very simple downsampling algorithm
-    // based on bresenham
-    int accu = fft_width;
-    int divider = 0;
     _bars.fill(0);
-    int i = 0;
-    for(; begin != end; ++begin)
+    const auto fft_width = end - begin;
+    if(fft_width >= W)
     {
-      const auto value = *begin;
-      _bars[i] += value;
-      ++divider;
-      accu -= W;
-      if(accu <= 0)
+      // very simple downsampling algorithm
+      // based on bresenham
+      int accu = fft_width;
+      int divider = 0;
+      int i = 0;
+      for(; begin != end; ++begin)
       {
-        _bars[i] /= divider;
-        divider = 0;
-        accu += fft_width;
-        ++i;
+        const auto value = *begin;
+        _bars[i] += value;
+        ++divider;
+        accu -= W;
+        if(accu <= 0)
+        {
+          _bars[i] /= divider;
+          divider = 0;
+          accu += fft_width;
+          ++i;
+        }
+      }
+    }
+    else
+    {
+      for(size_t i=0; i < W; ++i)
+      {
+        const auto position = int(lerp(0.0, fft_width - 1, float(i) / (W - 1)));
+        _bars[i] = *(begin + position);
       }
     }
   }
 
   void render(Display& display, int x, int y)
   {
-    const auto min = *std::min_element(_bars.begin(), _bars.end());
-    const auto max = *std::max_element(_bars.begin(), _bars.end());
+    const auto min = Transform::transform(*std::min_element(_bars.begin(), _bars.end()));
+    const auto max = Transform::transform(*std::max_element(_bars.begin(), _bars.end()));
     const auto height = max - min;
-    ESP_LOGI("fftd", "remapping case: %f", height);
+    ESP_LOGI("fftd", "height: %f, max: %f, min: %f", height, max, min);
     const auto scale = 253.0 / height;
     std::transform(
       _bars.begin(),

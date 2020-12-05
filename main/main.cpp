@@ -96,7 +96,7 @@ void main_task(void*)
   auto fft = new FFT();
   Display display;
 
-  auto fft_display = new FFTDisplay<54>;
+  auto fft_display = new FFTDisplay<135>;
 
   I2CHost i2c(I2C_NUM_0, SDA, SCL);
 
@@ -152,7 +152,7 @@ void main_task(void*)
             // because they contain DC and the drift.
             // The valie is just experience, I need to dig
             // down deeper to understand that.
-            fft->fft().begin() + 3,
+            fft->fft().begin() + 10,
             // The concrete use-case does not warrant
             // frequencies higher
             fft->fft().begin() + fft->n / 4
@@ -164,22 +164,11 @@ void main_task(void*)
     const float fps = 1.0 / (float(now - timestamp) / 1000000.0);
     timestamp = now;
     ESP_LOGI("main", "fps: %f", fps);
-    //                   sprintf(time_buffer, "%f", elapsed);
-    // display.font_render(
-    //   SMALL,
-    //   time_buffer,
-    //   0,
-    //   SMALL.size + 2
-    //   );
     if(display.ready())
     {
       display.vscroll();
       fft_display->render(display, 0, display.height() - 1);
       display.update();
-    }
-    else
-    {
-      ESP_LOGI("main", "display not ready");
     }
   }
 }

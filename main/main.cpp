@@ -1,6 +1,7 @@
 #include "display.hh"
 #include "i2c.hh"
 #include "mpu6050.hh"
+#include "madgwick.hh"
 #include "fft.hh"
 #include "ringbuffer.hh"
 
@@ -107,10 +108,17 @@ void main_task(void*)
     MPU6050::ACC_2_FS
     );
 
-  mpu.setup_fifo(MPU6050::fifo_e(MPU6050::FIFO_EN_ZG));
+  mpu.setup_fifo(MPU6050::fifo_e(
+                   MPU6050::FIFO_EN_ACCEL |
+                   MPU6050::FIFO_EN_XG |
+                   MPU6050::FIFO_EN_YG |
+                   MPU6050::FIFO_EN_ZG)
+    );
   mpu.calibrate_fifo_based();
+
   const auto mpu_samplerate = mpu.samplerate();
   const auto elapsed_seconds = 1.0 / mpu_samplerate;
+  MadgwickAHRS mpu_filter(mpu_samplerate);
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
 
   auto display_reader = rb->reader();
@@ -123,15 +131,26 @@ void main_task(void*)
   ESP_LOGI("main", "32 bit free: %i, 32 bit largest_free: %i", free, largest_free);
 
   auto timestamp = esp_timer_get_time();
+  size_t max_datagram_count = 0;
   bool running = true;
   while(running)
   {
-    mpu.consume_fifo(
-      [rb](const MPU6050::gyro_data_t& entry)
+    const auto datagram_count = mpu.consume_fifo(
+      [rb, &mpu_filter](const MPU6050::gyro_data_t& entry)
       {
-        rb->append(entry.gyro[2]);
+        mpu_filter.update_imu(
+          entry.gyro[0],
+          entry.gyro[1],
+          entry.gyro[2],
+          entry.acc[0],
+          entry.acc[1],
+          entry.acc[2]);
+        float x, y, z;
+        mpu_filter.compute_angles(x, y, z);
+        rb->append(x);
       }
       );
+    max_datagram_count = std::max(datagram_count, max_datagram_count);
     display_reader.consume(
       [&](const float& v)
       {
@@ -152,7 +171,7 @@ void main_task(void*)
             // because they contain DC and the drift.
             // The valie is just experience, I need to dig
             // down deeper to understand that.
-            fft->fft().begin() + 10,
+            fft->fft().begin() + 20,
             // This would go to n / 2, as we throw away
             // the negative frequencies. But this use-case
             // doesen't warrant those higher frequencies.
@@ -166,7 +185,7 @@ void main_task(void*)
       const auto now = esp_timer_get_time();
       const float fps = 1.0 / (float(now - timestamp) / 1000000.0);
       timestamp = now;
-      ESP_LOGI("main", "fps: %f", fps);
+      ESP_LOGI("main", "fps: %f, rad: %f, max datagram count: %i", fps, z_axis.rad(), max_datagram_count);
 
       display.vscroll();
       fft_display->render(display, 0, display.height() - 1);

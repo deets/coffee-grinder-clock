@@ -4,3 +4,9 @@ config COFFEE_CLOCK_STREAM_DATA
    depends on DEETS_WIFI_NETWORK_CONFIG
    help
       If defined, pull in the 
+
+config COFFEE_CLOCK_FILTER_IMU
+   bool "Filter IMU data using Madgwick"
+   default n
+   help
+      If defined, we run the IMU data through a Madgwick filter

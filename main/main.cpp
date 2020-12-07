@@ -109,17 +109,26 @@ void main_task(void*)
     );
 
   mpu.setup_fifo(MPU6050::fifo_e(
-                   MPU6050::FIFO_EN_ACCEL |
-                   MPU6050::FIFO_EN_XG |
-                   MPU6050::FIFO_EN_YG |
-                   MPU6050::FIFO_EN_ZG)
+                   MPU6050::FIFO_EN_XG
+                   #ifdef CONFIG_COFFEE_CLOCK_FILTER_IMU
+                   | MPU6050::FIFO_EN_ACCEL
+                   | MPU6050::FIFO_EN_YG
+                   | MPU6050_EN_ZG
+                   #endif
+                   )
     );
   mpu.calibrate_fifo_based();
 
   const auto mpu_samplerate = mpu.samplerate();
   const auto elapsed_seconds = 1.0 / mpu_samplerate;
+  #ifdef CONFIG_COFFEE_CLOCK_FILTER_IMU
   MadgwickAHRS mpu_filter(mpu_samplerate);
+  #endif
   GyroAxisDisplay z_axis("Z", 64, 32, 12, .7);
+
+  EventGroupHandle_t button_events = xEventGroupCreate();
+  assert(button_events);
+  iobuttons_setup(button_events);
 
   auto display_reader = rb->reader();
 
@@ -136,6 +145,7 @@ void main_task(void*)
   while(running)
   {
     const auto datagram_count = mpu.consume_fifo(
+      #ifdef CONFIG_COFFEE_CLOCK_FILTER_IMU
       [rb, &mpu_filter](const MPU6050::gyro_data_t& entry)
       {
         mpu_filter.update_imu(
@@ -149,6 +159,12 @@ void main_task(void*)
         mpu_filter.compute_angles(x, y, z);
         rb->append(x);
       }
+      #else
+      [rb](const MPU6050::gyro_data_t& entry)
+      {
+        rb->append(entry.gyro[0]);
+      }
+      #endif
       );
     max_datagram_count = std::max(datagram_count, max_datagram_count);
     display_reader.consume(

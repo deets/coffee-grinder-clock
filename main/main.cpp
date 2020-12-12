@@ -4,6 +4,7 @@
 #include "madgwick.hh"
 #include "fft.hh"
 #include "ringbuffer.hh"
+#include "io-buttons.hh"
 
 #ifdef CONFIG_COFFEE_CLOCK_STREAM_DATA
 #include "wifi.hh"
@@ -12,10 +13,10 @@
 
 #include "fft-display.hh"
 
-#include <esp_heap_caps.h>
-#include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
 #include <driver/spi_master.h>
 #include <nvs_flash.h>
 #include <math.h>
@@ -52,6 +53,11 @@ public:
   void update(float gyro, float elapsed_seconds)
   {
     _gyro_accu += gyro * elapsed_seconds;
+  }
+
+  void reset()
+  {
+    _gyro_accu = 0.0;
   }
 
   void display(Display& display)
@@ -196,6 +202,12 @@ void main_task(void*)
         }
       }
       );
+    if(xEventGroupGetBits(button_events) & LEFT_PIN_ISR_FLAG)
+    {
+      ESP_LOGI("main", "left button pressed");
+      z_axis.reset();
+    }
+    xEventGroupClearBits(button_events, LEFT_PIN_ISR_FLAG);
     if(display.ready())
     {
       const auto now = esp_timer_get_time();

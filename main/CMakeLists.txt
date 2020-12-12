@@ -5,6 +5,8 @@ set(srcs
   display.hh
   fft-display.hh
   fft.hh
+  io-buttons.hh
+  io-buttons.cpp
   main.cpp
   )
 

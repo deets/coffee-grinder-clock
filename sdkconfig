@@ -959,6 +959,8 @@ CONFIG_WPA_MBEDTLS_CRYPTO=y
 # CONFIG_WPA_WPS_WARS is not set
 # end of Supplicant
 
+# CONFIG_COFFEE_CLOCK_FILTER_IMU is not set
+
 #
 # DSP Library
 #

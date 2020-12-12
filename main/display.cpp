@@ -270,7 +270,7 @@ Display::Display()
     .duty_cycle_pos = 0,
     .cs_ena_pretrans = 0,
     .cs_ena_posttrans = 0,
-    .clock_speed_hz = 26 * 1000 * 1000,     //Clock out at 26 MHz
+    .clock_speed_hz = 40 * 1000 * 1000,
     .input_delay_ns = 0,
     .spics_io_num = PIN_NUM_CS,             //CS pin
     .flags = 0,

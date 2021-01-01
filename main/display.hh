@@ -6,6 +6,7 @@
 #include <freertos/task.h>
 #include "driver/spi_master.h"
 #include <freertos/event_groups.h>
+#include "font_render.h"
 
 #include <vector>
 #include <array>
@@ -167,6 +168,7 @@ public:
     return Sprite(width(), height(), _buffer.data());
   }
 
+  void render_text(const char *text, int src_x, int src_y, int y, uint8_t color_r, uint8_t color_g, uint8_t color_b);
 
 private:
   friend void lcd_spi_pre_transfer_callback(spi_transaction_t *t);
@@ -196,4 +198,7 @@ private:
   spi_transaction_t _spi_transaction;
   int _dc;
   std::atomic<bool> _spi_transaction_ongoing;
+
+  font_face_t _font_face;
+  font_render_t _font_render;
 };

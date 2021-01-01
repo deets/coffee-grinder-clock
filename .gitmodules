@@ -7,3 +7,6 @@
 [submodule "components/esp-dsp"]
 	path = components/esp-dsp
 	url = https://github.com/espressif/esp-dsp.git
+[submodule "components/font_render/freetype2"]
+	path = components/font_render/freetype2
+	url = git://git.sv.nongnu.org/freetype/freetype2.git

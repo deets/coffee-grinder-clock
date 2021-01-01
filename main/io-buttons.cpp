@@ -29,7 +29,6 @@ static EventGroupHandle_t s_button_events;
 
 void IRAM_ATTR gpio_isr_handler(void* arg)
 {
-  BaseType_t higher_prio_has_woken;
   int pin = (int)arg;
   int bit = 0;
   int64_t ts = esp_timer_get_time();

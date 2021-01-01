@@ -2,6 +2,7 @@
 #include "display.hh"
 #include "st7789.h"
 #include "colormap.hh"
+#include "unicode.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -12,6 +13,11 @@
 #include <algorithm>
 #include <cstring>
 #include <assert.h>
+#include <sstream>
+#include <iomanip>
+
+extern const uint8_t ttf_start[] asm("_binary_Ubuntu_R_ttf_start");
+extern const uint8_t ttf_end[] asm("_binary_Ubuntu_R_ttf_end");
 
 namespace {
 
@@ -23,6 +29,37 @@ uint16_t _width = 135;
 uint16_t _height = 240;
 
 #define TRANSMIT_BUFFER 1
+
+std::stringstream to_str(const font_render_t& fr)
+{
+  std::stringstream res;
+  res << "font_render_t { "
+      << "\n   max_pixel_width: " << fr.max_pixel_width
+      << "\n   max_pixel_height: " << fr.max_pixel_height
+      << "\n   origin: " << fr.origin
+      << "\n   bitmap_width: " << fr.bitmap_width
+      << "\n   bitmap_height: " << fr.bitmap_height
+      << "\n   pixel_size: " << fr.pixel_size
+      << "\n   bitmap_left: " << fr.bitmap_left
+      << "\n   bitmap_top: " << fr.bitmap_top
+      << "\n   advance: " << fr.advance;
+
+  if(fr.bitmap)
+  {
+    res << "\n";
+    for(font_size_t y=0; y < fr.bitmap_height; ++y)
+    {
+      for(font_size_t x=0; x < fr.bitmap_width; ++x)
+      {
+        res << std::setfill('0') << std::setw(2) << std::right << std::hex << int(fr.bitmap[y * fr.bitmap_width + x]);
+      }
+      res << "\n";
+    }
+    res << "\n";
+  }
+  res << "}";
+  return res;
+}
 
 } // end namespace
 
@@ -303,6 +340,9 @@ Display::Display()
     "dup", 8192, this, tskIDLE_PRIORITY + 1, &_update_task_handle);
   assert(_update_task_handle);
   _spi_transaction_ongoing = false;
+
+  ESP_ERROR_CHECK(font_face_init(&_font_face, ttf_start, ttf_end - ttf_start - 1));
+  ESP_ERROR_CHECK(font_render_init(&_font_render, &_font_face, 24, 16));
 }
 
 void Display::s_update_task(void* display)
@@ -375,10 +415,6 @@ void Display::draw_pixel(int x, int y, uint8_t color)
   _buffer[x + y * width()] = color;
 }
 
-void Display::blit(const sprite_t& sprite, int x, int y)
-{
-}
-
 void Display::set_color(uint8_t color)
 {
 }
@@ -405,4 +441,21 @@ void Display::circle(int x0, int y0, int rad, bool filled)
 void Display::vscroll()
 {
   std::copy(_buffer.begin() + width(), _buffer.end(), _buffer.begin());
+}
+
+
+void Display::render_text(const char *text, int src_x, int src_y, int y, uint8_t color_r, uint8_t color_g, uint8_t color_b) {
+  ESP_LOGI("disp", "render_text");
+  //ESP_LOGE("disp", "%i %i %i %s", src_y, y, height(), to_str(_font_render).str().c_str());
+  if (src_y - y >= height() || src_y + (int)_font_render.max_pixel_height - y < 0) {
+    return;
+  }
+  while (*text) {
+    uint32_t glyph;
+    text += u8_decode(&glyph, text);
+    font_render_glyph(&_font_render, glyph);
+    ESP_LOGE("disp", "%s", to_str(_font_render).str().c_str());
+    // st7789_draw_gray2_bitmap(render->bitmap, driver->current_buffer, color_r, color_g, color_b, src_x + render->bitmap_left, render->max_pixel_height - render->origin - render->bitmap_top + src_y - y, render->bitmap_width, render->bitmap_height, driver->display_width, ST7789_BUFFER_SIZE);
+    src_x += _font_render.advance;
+  }
 }

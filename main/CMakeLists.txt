@@ -7,6 +7,8 @@ set(srcs
   fft.hh
   io-buttons.hh
   io-buttons.cpp
+  unicode.c
+  unicode.h
   main.cpp
   )
 
@@ -21,4 +23,5 @@ endif()
 idf_component_register(
   SRCS ${srcs}
   INCLUDE_DIRS "."
+  EMBED_TXTFILES "Ubuntu-R.ttf"
   )

@@ -224,6 +224,7 @@ void main_task(void*)
       ESP_LOGI("main", "fps: %f, rad: %f, max datagram count: %i", fps, z_axis.rad(), max_datagram_count);
       auto ds = display.sprite();
       test_sprite.restore(ds);
+      //display.render_text("3", 100, 100, 100, 255, 255, 255);
       display.vscroll();
       fft_display->render(display, 0, display.height() - 1);
       test_sprite.blit(ds, 10, 10);

@@ -14,9 +14,10 @@
 
 class Sprite {
 public:
-  Sprite(size_t width, size_t height, uint8_t* image=nullptr)
+  Sprite(size_t width, size_t height, uint8_t* image=nullptr, int mask=-1)
     : _width(width)
     , _height(height)
+    , _mask(mask)
   {
     if(image)
     {
@@ -66,14 +67,20 @@ public:
     auto source = _image;
     copy(source, dest, modulo, width(), height());
   }
+
 protected:
-  inline void copy(const uint8_t *source, uint8_t *dest, size_t modulo, size_t width, size_t height)
+  inline void copy(const uint8_t *source, uint8_t *dest, size_t modulo, size_t width, size_t height, int mask=-1)
   {
     for(size_t sy = 0; sy < height; ++sy)
     {
       for(size_t sx = 0; sx < width; ++sx)
       {
-        *dest++ = *source++;
+        if(mask == -1 || *source != mask)
+        {
+          *dest = *source;
+        }
+        ++dest;
+        ++source;
       }
       dest += modulo;
     }
@@ -83,13 +90,14 @@ private:
   size_t _width, _height;
   uint8_t* _image;
   bool _borrowed;
+  int _mask;
 };
 
 class BufferedSprite: public Sprite
 {
 public:
-  BufferedSprite(size_t width, size_t height, uint8_t* image=nullptr)
-    : Sprite(width, height, image)
+  BufferedSprite(size_t width, size_t height, uint8_t* image=nullptr, int mask=-1)
+    : Sprite(width, height, image, mask)
     , _buffered(false)
   {
     _buffer.resize(height * width);

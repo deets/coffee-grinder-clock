@@ -1,7 +1,6 @@
 config COFFEE_CLOCK_STREAM_DATA
    bool "Stream the data using WIFI"
    default n
-   depends on DEETS_WIFI_NETWORK_CONFIG
    help
       If defined, pull in the 
 

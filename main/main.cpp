@@ -96,15 +96,17 @@ void main_task(void*)
   #ifdef CONFIG_COFFEE_CLOCK_STREAM_DATA
   setup_wifi();
   auto streamer = new DataStreamer("");
+  #else
+  Display display;
+  auto test_sprite = BufferedSprite(display.width() - 4, 28, nullptr, 0xff);
   #endif
 
   using FFT = FFT<256, 16>;
   auto rb = new RingBuffer<float, 2000>();
 
   auto fft = new FFT();
-  Display display;
 
-  auto test_sprite = BufferedSprite(display.width() - 4, 28, nullptr, 0xff);
+
 
   auto fft_display = new FFTDisplay<135>;
 
@@ -140,13 +142,6 @@ void main_task(void*)
   iobuttons_setup(button_events);
 
   auto display_reader = rb->reader();
-
-  auto free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-  auto largest_free = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-  ESP_LOGI("main", "8 bit free: %i, 8 bit largest_free: %i", free, largest_free);
-  free = heap_caps_get_free_size(MALLOC_CAP_32BIT);
-  largest_free = heap_caps_get_largest_free_block(MALLOC_CAP_32BIT);
-  ESP_LOGI("main", "32 bit free: %i, 32 bit largest_free: %i", free, largest_free);
 
   auto timestamp = esp_timer_get_time();
   size_t max_datagram_count = 0;
@@ -211,6 +206,7 @@ void main_task(void*)
       z_axis.reset();
     }
     xEventGroupClearBits(button_events, LEFT_PIN_ISR_FLAG);
+    #ifndef CONFIG_COFFEE_CLOCK_STREAM_DATA
     if(display.ready())
     {
       const auto now = esp_timer_get_time();
@@ -234,6 +230,7 @@ void main_task(void*)
       test_sprite.blit(ds, 2, 2);
       display.update();
     }
+    #endif // not(CONFIG_COFFEE_CLOCK_STREAM_DATA)
   }
 }
 

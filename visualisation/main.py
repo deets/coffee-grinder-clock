@@ -18,7 +18,7 @@ from bokeh.models import FactorRange, Range1d
 from bokeh.models import Select
 
 FREQUENCY = 1000.0 # our sampling frequency in the MPU
-N = 1024
+N = 512
 HIGHPASS = 4
 
 

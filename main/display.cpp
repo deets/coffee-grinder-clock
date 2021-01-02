@@ -61,6 +61,24 @@ std::stringstream to_str(const font_render_t& fr)
   return res;
 }
 
+std::stringstream to_str(const Sprite& s)
+{
+  std::stringstream res;
+  res << "Sprite { "
+      << "\n   width: " << s.width()
+      << "\n   height: " << s.height()
+      << "\n";
+  for(size_t y=0; y < s.height(); ++y)
+  {
+    for(font_size_t x=0; x < s.width(); ++x)
+    {
+      res << std::setfill('0') << std::setw(2) << std::right << std::hex << int(s.at(x, y));
+    }
+    res << "\n";
+  }
+  return res;
+}
+
 } // end namespace
 
 //This function is called (in irq context!) just before a transmission starts. It will
@@ -444,18 +462,24 @@ void Display::vscroll()
 }
 
 
-void Display::render_text(const char *text, int src_x, int src_y, int y, uint8_t color_r, uint8_t color_g, uint8_t color_b) {
+void Display::render_text(Sprite& dest, const char *text, int cx, int cy, uint8_t fg, uint8_t bg)
+{
   ESP_LOGI("disp", "render_text");
   //ESP_LOGE("disp", "%i %i %i %s", src_y, y, height(), to_str(_font_render).str().c_str());
-  if (src_y - y >= height() || src_y + (int)_font_render.max_pixel_height - y < 0) {
-    return;
-  }
   while (*text) {
     uint32_t glyph;
+    // advance according to utf-8-decoding
     text += u8_decode(&glyph, text);
     font_render_glyph(&_font_render, glyph);
-    ESP_LOGE("disp", "%s", to_str(_font_render).str().c_str());
-    // st7789_draw_gray2_bitmap(render->bitmap, driver->current_buffer, color_r, color_g, color_b, src_x + render->bitmap_left, render->max_pixel_height - render->origin - render->bitmap_top + src_y - y, render->bitmap_width, render->bitmap_height, driver->display_width, ST7789_BUFFER_SIZE);
-    src_x += _font_render.advance;
+    std::transform(
+      _font_render.bitmap,
+      _font_render.bitmap + _font_render.bitmap_width * _font_render.bitmap_height,
+      _font_render.bitmap,
+      [bg, fg](const uint8_t bmc) { return bmc ? fg : bg; });
+    size_t sx = cx - _font_render.bitmap_left;
+    size_t sy = cy - _font_render.bitmap_top;
+    Sprite glyph_sprite = Sprite(_font_render.bitmap_width, _font_render.bitmap_height, _font_render.bitmap);
+    glyph_sprite.blit(dest, sx, sy);
+    cx += _font_render.advance;
   }
 }

@@ -2,6 +2,7 @@
 // -*- mode: c++-mode -*-
 #pragma once
 
+#include <cstring>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "driver/spi_master.h"
@@ -39,6 +40,11 @@ public:
     }
   }
 
+  uint8_t at(size_t x, size_t y) const
+  {
+    return *(_image + x + y * width());
+  }
+
   size_t width() const noexcept
   {
     return _width;
@@ -67,6 +73,12 @@ public:
     auto source = _image;
     copy(source, dest, modulo, width(), height());
   }
+
+  void fill(uint8_t color)
+  {
+    std::memset(_image, color, _width * _height);
+  }
+
 
 protected:
   inline void copy(const uint8_t *source, uint8_t *dest, size_t modulo, size_t width, size_t height, int mask=-1)
@@ -176,7 +188,7 @@ public:
     return Sprite(width(), height(), _buffer.data());
   }
 
-  void render_text(const char *text, int src_x, int src_y, int y, uint8_t color_r, uint8_t color_g, uint8_t color_b);
+  void render_text(Sprite& dest, const char *text, int cx, int cy, uint8_t fg, uint8_t bg);
 
 private:
   friend void lcd_spi_pre_transfer_callback(spi_transaction_t *t);

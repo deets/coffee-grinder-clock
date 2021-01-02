@@ -96,20 +96,15 @@ void main_task(void*)
   setup_wifi();
   auto streamer = new DataStreamer("");
   #endif
-  uint8_t data[] = {
-      0x00, 0x01, 0x01, 0x00,
-      0x01, 0x01, 0x01, 0x01,
-      0x01, 0x01, 0x01, 0x01,
-      0x00, 0x01, 0x01, 0x00,
-  };
-
-  auto test_sprite = BufferedSprite(4, 4, data, 0x00);
 
   using FFT = FFT<256, 16>;
   auto rb = new RingBuffer<float, 2000>();
 
   auto fft = new FFT();
   Display display;
+
+  auto test_sprite = BufferedSprite(display.width() - 4, 28, nullptr, 0xff);
+  test_sprite.fill(0x00);
 
   auto fft_display = new FFTDisplay<135>;
 
@@ -224,10 +219,12 @@ void main_task(void*)
       ESP_LOGI("main", "fps: %f, rad: %f, max datagram count: %i", fps, z_axis.rad(), max_datagram_count);
       auto ds = display.sprite();
       test_sprite.restore(ds);
-      display.render_text("3", 100, 100, 100, 255, 255, 255);
+
       display.vscroll();
       fft_display->render(display, 0, display.height() - 1);
-      test_sprite.blit(ds, 10, 10);
+      display.render_text(test_sprite, "Anne", 2, 28 - 2, 1, 0);
+
+      test_sprite.blit(ds, 2, 2);
       display.update();
     }
   }

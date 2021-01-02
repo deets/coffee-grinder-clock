@@ -464,21 +464,26 @@ void Display::vscroll()
 
 void Display::render_text(Sprite& dest, const char *text, int cx, int cy, uint8_t fg, uint8_t bg)
 {
-  ESP_LOGI("disp", "render_text");
-  //ESP_LOGE("disp", "%i %i %i %s", src_y, y, height(), to_str(_font_render).str().c_str());
+  std::vector<uint8_t> buffer;
   while (*text) {
     uint32_t glyph;
     // advance according to utf-8-decoding
     text += u8_decode(&glyph, text);
     font_render_glyph(&_font_render, glyph);
+    if(buffer.capacity() < _font_render.max_pixel_width * _font_render.max_pixel_height)
+    {
+      buffer.resize(_font_render.max_pixel_width * _font_render.max_pixel_height);
+    }
+    //ESP_LOGE("disp", "%s", to_str(_font_render).str().c_str());
     std::transform(
       _font_render.bitmap,
       _font_render.bitmap + _font_render.bitmap_width * _font_render.bitmap_height,
-      _font_render.bitmap,
+      buffer.data(),
       [bg, fg](const uint8_t bmc) { return bmc ? fg : bg; });
     size_t sx = cx - _font_render.bitmap_left;
     size_t sy = cy - _font_render.bitmap_top;
-    Sprite glyph_sprite = Sprite(_font_render.bitmap_width, _font_render.bitmap_height, _font_render.bitmap);
+    Sprite glyph_sprite = Sprite(_font_render.bitmap_width, _font_render.bitmap_height, buffer.data());
+    //ESP_LOGE("disp", "%s", to_str(glyph_sprite).str().c_str());
     glyph_sprite.blit(dest, sx, sy);
     cx += _font_render.advance;
   }

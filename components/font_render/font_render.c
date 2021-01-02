@@ -33,8 +33,8 @@ static esp_err_t font_cache_init(font_render_t *render) {
 	render->max_pixel_width = (render->pixel_size * (render->font_face->ft_face->bbox.xMax - render->font_face->ft_face->bbox.xMin)) / render->font_face->ft_face->units_per_EM + 1;
 	render->max_pixel_height = (render->pixel_size * (render->font_face->ft_face->bbox.yMax - render->font_face->ft_face->bbox.yMin)) / render->font_face->ft_face->units_per_EM + 1;
 	render->origin = (render->pixel_size * (-render->font_face->ft_face->bbox.yMin)) / render->font_face->ft_face->units_per_EM;
-	render->bytes_per_glyph = (size_t)render->max_pixel_width * (size_t)render->max_pixel_height * 2;
-	render->bytes_per_glyph = (render->bytes_per_glyph >> 3) + (render->bytes_per_glyph & 0x07 ? 1 : 0);
+	render->bytes_per_glyph = (size_t)render->max_pixel_width * (size_t)render->max_pixel_height;
+        ESP_LOGI("ft", "render->bytes_per_glyph: %i", render->bytes_per_glyph);
 
 	render->glyph_cache = (uint8_t *)heap_caps_malloc(render->bytes_per_glyph * render->cache_size, FONT_CACHE_ALLOC);
 	render->glyph_cache_records = (glyph_cache_record_t *)heap_caps_malloc(sizeof(glyph_cache_record_t) * render->cache_size, FONT_CACHE_ALLOC);

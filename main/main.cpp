@@ -22,6 +22,7 @@
 #include <math.h>
 #include <array>
 #include <vector>
+#include <sstream>
 
 extern "C" void app_main();
 
@@ -104,7 +105,6 @@ void main_task(void*)
   Display display;
 
   auto test_sprite = BufferedSprite(display.width() - 4, 28, nullptr, 0xff);
-  test_sprite.fill(0x00);
 
   auto fft_display = new FFTDisplay<135>;
 
@@ -220,9 +220,16 @@ void main_task(void*)
       auto ds = display.sprite();
       test_sprite.restore(ds);
 
+      // append a new line with the curent FFT
+      // readings.
       display.vscroll();
       fft_display->render(display, 0, display.height() - 1);
-      display.render_text(test_sprite, "Anne", 2, 28 - 2, 1, 0);
+
+      const auto rad = z_axis.rad();
+      std::stringstream ss;
+      ss << rad;
+      test_sprite.fill(0x00);
+      display.render_text(test_sprite, ss.str().c_str(), 8, 28 - 2, 1, 0);
 
       test_sprite.blit(ds, 2, 2);
       display.update();

@@ -63,15 +63,17 @@ public:
   template<class T>
   void blit(T& other, size_t x, size_t y)
   {
-    assert(other.width() >= width() + x);
-    assert(other.height() >= height() + y);
-    assert(x >= 0 && x < other.width());
-    assert(y >= 0 && y < other.height());
-    size_t modulo = other.width() - width();
-    auto dest = other.data();
-    dest += x + other.width() * y;
-    auto source = _image;
-    copy(source, dest, modulo, width(), height());
+    if((other.width() >= width() + x)
+       && (other.height() >= height() + y)
+       && (x >= 0 && x < other.width())
+       && (y >= 0 && y < other.height()))
+    {
+      size_t modulo = other.width() - width();
+      auto dest = other.data();
+      dest += x + other.width() * y;
+      auto source = _image;
+      copy(source, dest, modulo, width(), height());
+    }
   }
 
   void fill(uint8_t color)

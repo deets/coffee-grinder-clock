@@ -4,8 +4,11 @@
 #include <esp_log.h>
 
 #include <cmath>
+#include <optional>
 
 float lerp(float a, float b, float f) { return a + f * (b - a); }
+
+const float NO_SCALE = 12345.678;
 
 struct LogTransform
 {
@@ -80,14 +83,14 @@ public:
   {
     const auto min = Transform::transform(*std::min_element(_bars.begin(), _bars.end()));
     const auto max = Transform::transform(*std::max_element(_bars.begin(), _bars.end()));
-    const auto height = max - min;
-    const auto scale = 253.0 / height;
+    const auto diff = max - min;
+    const auto scale = filtered_scale(diff);
     std::transform(
       _bars.begin(),
       _bars.end(),
       _color.begin(),
       [&](const float v) {
-        return uint8_t(2.0 + v * scale);
+        return uint8_t(2.0 + std::min(v * scale, 253.0f));
       });
     int xs = 0;
     for(const auto& color : _color)
@@ -96,8 +99,20 @@ public:
     }
   }
 
-private:
+  float filtered_scale(float diff)
+  {
+    auto new_scale = 253.0 / diff;
+    if(_filtered_scale != NO_SCALE) // && new_scale > _filtered_scale)
+    {
+      new_scale = _filtered_scale + (new_scale - _filtered_scale) * _scale_gain;
+    }
+    _filtered_scale = new_scale;
+    return _filtered_scale;
+  }
 
+private:
+  float _filtered_scale = NO_SCALE;
+  float _scale_gain = 0.01;
   std::array<float, W> _bars;
   std::array<uint8_t, W> _color;
 };

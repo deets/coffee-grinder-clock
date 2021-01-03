@@ -115,7 +115,9 @@ public:
       // now take the norm of the complex number, and store it
       // back from the beginning of the vector
       const auto l = sqrtf(cre * cre + cim * cim);
-      _fft[i] = l;
+      //_fft[i] = l;
+      const auto db = 20 * log10(l);
+      _fft[i] = db;
     }
   }
 

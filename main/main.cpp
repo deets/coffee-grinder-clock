@@ -61,6 +61,11 @@ public:
     _gyro_accu = 0.0;
   }
 
+  void add(float v)
+  {
+    _gyro_accu += v;
+  }
+
   void display(Display& display)
   {
     if(_name)
@@ -201,12 +206,31 @@ void main_task(void*)
         }
       }
       );
-    if(xEventGroupGetBits(button_events) & LEFT_PIN_ISR_FLAG)
+    const auto buttons = xEventGroupGetBits(button_events);
+    if(buttons & LEFT_PIN_ISR_FLAG)
     {
       ESP_LOGI("main", "left button pressed");
       z_axis.reset();
     }
-    xEventGroupClearBits(button_events, LEFT_PIN_ISR_FLAG);
+    if(buttons & RIGHT_PIN_ISR_FLAG)
+    {
+      ESP_LOGI("main", "right button pressed");
+    }
+    if(buttons & DOWN_PIN_ISR_FLAG)
+    {
+      ESP_LOGI("main", "down button pressed");
+      z_axis.add(-0.5);
+    }
+    if(buttons & UP_PIN_ISR_FLAG)
+    {
+      ESP_LOGI("main", "up button pressed");
+      z_axis.add(0.5);
+    }
+
+    xEventGroupClearBits(
+      button_events,
+      LEFT_PIN_ISR_FLAG | RIGHT_PIN_ISR_FLAG
+      | DOWN_PIN_ISR_FLAG | UP_PIN_ISR_FLAG);
     #ifndef CONFIG_COFFEE_CLOCK_STREAM_DATA
     if(display.ready())
     {

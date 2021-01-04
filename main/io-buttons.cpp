@@ -13,13 +13,16 @@ namespace
 
 
 const gpio_num_t GPIO_LEFT = gpio_num_t(8);
+const gpio_num_t GPIO_RIGHT = gpio_num_t(7);
+const gpio_num_t GPIO_DOWN = gpio_num_t(6);
+const gpio_num_t GPIO_UP = gpio_num_t(5);
 
 const int DEBOUNCE = (200 * 1000);
 
 std::unordered_map<int, uint64_t> s_debounces = {
-    // {GPIO_DOWN, 200 * 1000},
-    // {GPIO_UP, 200 * 1000},
-    // {GPIO_RIGHT, 20 * 1000},
+    {GPIO_DOWN, 200 * 1000},
+    {GPIO_UP, 200 * 1000},
+    {GPIO_RIGHT, 20 * 1000},
     {GPIO_LEFT, 20 * 1000}
 };
 
@@ -46,12 +49,15 @@ void IRAM_ATTR gpio_isr_handler(void* arg)
   case GPIO_LEFT:
     bit = LEFT_PIN_ISR_FLAG;
     break;
-  // case GPIO_DOWN:
-  //   bit = DOWN_PIN_ISR_FLAG;
-  //   break;
-  // case GPIO_UP:
-  //   bit = UP_PIN_ISR_FLAG;
-  //   break;
+  case GPIO_RIGHT:
+    bit = RIGHT_PIN_ISR_FLAG;
+    break;
+  case GPIO_DOWN:
+    bit = DOWN_PIN_ISR_FLAG;
+    break;
+  case GPIO_UP:
+    bit = UP_PIN_ISR_FLAG;
+    break;
   }
 
   auto xHigherPriorityTaskWoken = pdFALSE;
@@ -81,9 +87,9 @@ void iobuttons_setup(EventGroupHandle_t button_events)
   //interrupt of rising edge
   io_conf.intr_type = (gpio_int_type_t)GPIO_PIN_INTR_POSEDGE;
   io_conf.pin_bit_mask = \
-  // (1ULL<< GPIO_DOWN) |
-  // (1ULL<< GPIO_RIGHT) |
-  // (1ULL<< GPIO_UP) |
+  (1ULL<< GPIO_DOWN) |
+  (1ULL<< GPIO_RIGHT) |
+  (1ULL<< GPIO_UP) |
   (1ULL<< GPIO_LEFT);
 
   //set as input mode
@@ -95,9 +101,9 @@ void iobuttons_setup(EventGroupHandle_t button_events)
   // install global GPIO ISR handler
   gpio_install_isr_service(0);
   // install individual interrupts
-  // gpio_isr_handler_add(GPIO_DOWN, gpio_isr_handler, (void*)GPIO_DOWN);
-  // gpio_isr_handler_add(GPIO_RIGHT, gpio_isr_handler, (void*)GPIO_RIGHT);
-  // gpio_isr_handler_add(GPIO_UP, gpio_isr_handler, (void*)GPIO_UP);
+  gpio_isr_handler_add(GPIO_DOWN, gpio_isr_handler, (void*)GPIO_DOWN);
+  gpio_isr_handler_add(GPIO_RIGHT, gpio_isr_handler, (void*)GPIO_RIGHT);
+  gpio_isr_handler_add(GPIO_UP, gpio_isr_handler, (void*)GPIO_UP);
   gpio_isr_handler_add(GPIO_LEFT, gpio_isr_handler, (void*)GPIO_LEFT);
   // fill map to avoid allocates in ISR
   int64_t ts = esp_timer_get_time();

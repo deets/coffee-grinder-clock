@@ -10,3 +10,6 @@
 [submodule "components/font_render/freetype2"]
 	path = components/font_render/freetype2
 	url = git://git.sv.nongnu.org/freetype/freetype2.git
+[submodule "real-world/electronics/coffee-grinder-clock/modules/kicad-lib"]
+	path = real-world/electronics/coffee-grinder-clock/modules/kicad-lib
+	url = https://github.com/deets/kicad-lib

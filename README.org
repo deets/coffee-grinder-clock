@@ -4,10 +4,35 @@
 
 http://www.lilygo.cn/prod_view.aspx?TypeId=50033&Id=1321&FId=t3:50033:3
 
+The Pins are un-numbered. So I adopted a convention:
+
+They run from top left (GND) as 1 to  bottom left (VBUS) and then
+from bottom right (5V) to top right (IO00).
 
 [[./data/lilygo-t-display-s2.png]]
 
-** Programming connector
+** Wiring Diagram LilyGo
+
+| LilyGo      | MPU |
+|-------------+-----|
+| VDD3V3 (14) | VCC |
+| GND (15)    | GND |
+| IO20 (23)   | SCL |
+| IO19 (24)   | SDA |
+
+| LilyGo      | Buttons |
+|-------------+---------|
+| VDD3V3 (13) | VCC     |
+| GND (1)     | GND     |
+| IO8 (32)    | LEFT    |
+| IO7 (33)    | RIGHT   |
+| IO6 (34)    | DOWN    |
+| IO5 (35)    | UP      |
+|             |         |
+
+
+
+** Programming connector for old ESP32 prototype
 
 Looking on to the pinheader, solderside down
 
